@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { CheckCircle2, Circle, Pencil, Trash2 } from "lucide-react"
+import { CheckCircle2, Circle, Mic, Pencil, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
@@ -30,6 +30,7 @@ import {
   useUpdateHiveWordMutation,
   type HiveWord,
 } from "@/features/hive/useHiveWords"
+import { AudioRecorderDialog } from "@/features/hive/audio/AudioRecorderDialog"
 import { HiveWordFormDialog } from "./HiveWordFormDialog"
 
 const SOURCE_LABEL: Record<HiveWord["source"], string> = {
@@ -121,6 +122,22 @@ function HiveWordRow({ classId, word }: { classId: string; word: HiveWord }) {
       </TableCell>
       <TableCell className="text-right">
         <div className="flex justify-end gap-1">
+          <AudioRecorderDialog
+            classId={classId}
+            hiveWordId={word.id}
+            word={word.word}
+            existingAudioPath={word.teacher_audio_path}
+            trigger={
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn("size-8", word.teacher_audio_path && "text-primary")}
+                aria-label={`Record audio for ${word.word}`}
+              >
+                <Mic className="size-4" />
+              </Button>
+            }
+          />
           <HiveWordFormDialog
             open={editOpen}
             onOpenChange={setEditOpen}

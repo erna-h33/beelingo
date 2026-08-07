@@ -10,6 +10,7 @@ import { useStudentSessionQuery } from "@/features/studentSession/useStudentSess
 import { useHiveWordsQuery } from "@/features/hive/useHiveWords"
 import { useMyContributionsQuery } from "@/features/hive/useContributions"
 import { ContributeWordDialog } from "@/features/hive/components/ContributeWordDialog"
+import { AudioPlayButton } from "@/features/hive/audio/AudioPlayButton"
 
 export default function HivePage() {
   const { data: session } = useStudentSessionQuery()
@@ -98,7 +99,10 @@ export default function HivePage() {
                       <p className="text-sm text-muted-foreground">{word.translation}</p>
                     )}
                   </div>
-                  {word.topic && <Badge variant="outline">{word.topic}</Badge>}
+                  <div className="flex shrink-0 items-center gap-1">
+                    <AudioPlayButton path={word.teacher_audio_path} />
+                    {word.topic && <Badge variant="outline">{word.topic}</Badge>}
+                  </div>
                 </div>
                 {(word.word_type || word.gender || word.plural) && (
                   <p className="mt-1 text-xs text-muted-foreground">
