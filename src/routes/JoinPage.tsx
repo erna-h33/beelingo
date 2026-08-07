@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react"
-import { Link } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
 import { ArrowRight, GraduationCap } from "lucide-react"
 import { toast } from "sonner"
 
@@ -21,7 +21,8 @@ import {
  * in M4 — this milestone only wires up the UI shape and layout.
  */
 export default function JoinPage() {
-  const [code, setCode] = useState("")
+  const [searchParams] = useSearchParams()
+  const [code, setCode] = useState(() => (searchParams.get("code") ?? "").toUpperCase().slice(0, 6))
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
