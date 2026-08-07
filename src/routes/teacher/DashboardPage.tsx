@@ -7,8 +7,8 @@ export default function DashboardPage() {
     <PlaceholderPage
       icon={LayoutDashboard}
       title="Teacher Dashboard"
-      description="Student counts, attendance, vocabulary collected, recent games, and average quiz score."
-      milestone="M9"
+      description="Vocabulary collected, top contributors, most missed words, recent games, and average accuracy."
+      milestone="M10"
     />
   )
 }

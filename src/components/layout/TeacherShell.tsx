@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet } from "react-router-dom"
-import { BookOpen, LayoutDashboard, GraduationCap } from "lucide-react"
+import { Users, LayoutDashboard, GraduationCap } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -17,7 +17,7 @@ import {
 
 const NAV_ITEMS = [
   { to: "/t", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { to: "/t/courses", label: "Courses", icon: BookOpen },
+  { to: "/t/classes", label: "Classes", icon: Users },
 ]
 
 /**

@@ -24,11 +24,11 @@ export default function LandingPage() {
       <main className="flex flex-1 flex-col items-center justify-center gap-10 px-6 py-12">
         <div className="max-w-lg text-center">
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-            The teacher teaches. The AI prepares.
+            Build your class's vocabulary, together.
           </h1>
           <p className="mt-3 text-muted-foreground">
-            Live classroom games, a collaborative vocabulary bank, and AI-assisted
-            lesson prep — built for real classrooms.
+            Students contribute new words after every class. The shared
+            vocabulary bank turns straight into fun, live classroom games.
           </p>
         </div>
 
@@ -41,7 +41,7 @@ export default function LandingPage() {
               <div>
                 <h2 className="font-semibold">I'm a teacher</h2>
                 <p className="text-sm text-muted-foreground">
-                  Build courses, run live games, and track your class.
+                  Create classes, grow a vocabulary bank, and run live games.
                 </p>
               </div>
               <Button asChild className="w-full">

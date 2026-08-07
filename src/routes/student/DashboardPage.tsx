@@ -7,8 +7,8 @@ export default function DashboardPage() {
     <PlaceholderPage
       icon={Home}
       title="Your Dashboard"
-      description="Streak, lessons completed, quiz history, accuracy, vocabulary learned, and past games."
-      milestone="M9"
+      description="Learning streak, games played, accuracy, contributions, and vocabulary learned."
+      milestone="M10"
     />
   )
 }

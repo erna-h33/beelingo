@@ -8,7 +8,7 @@ export default function GamePage() {
       icon={Gamepad2}
       title="Waiting for teacher…"
       description="Live classroom games will appear here the moment your teacher starts one."
-      milestone="M7"
+      milestone="M9"
     />
   )
 }

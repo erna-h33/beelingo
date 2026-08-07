@@ -1,117 +1,245 @@
-# Beelingo — AI Language Classroom Platform: Architecture & Build Plan
+# BeeLingo — Architecture
 
-## Context
+## Product philosophy
 
-This is a greenfield project (empty directory, no git repo yet). The user provided a full MVP product spec for an AI-assisted language classroom platform with two very different user types — authenticated teachers and account-less students identified only by a class code + device — plus AI-assisted content generation, live realtime classroom games, and a collaborative vocabulary bank. The spec fixes the tech stack (React/TS/Vite/Tailwind/shadcn, Supabase, OpenAI, TanStack Query, RHF+Zod, Recharts, Vercel) but leaves several foundational technical decisions open (how student identity/RLS works, whether AI is required or optional, animation approach). This plan resolves those decisions and lays out a milestone-by-milestone build path so the first commit is architected correctly rather than reworked later. Neither Supabase nor OpenAI accounts exist yet, so Milestone 0 covers first-time setup.
+BeeLingo is **not** an AI teaching assistant. It's a collaborative classroom
+vocabulary platform: teachers and students build a shared vocabulary bank
+together, and that bank deterministically powers classroom games. No LLM,
+no AI-generated content, anywhere in the product. Keep it lightweight,
+fast, and simple — avoid over-engineering.
 
-## Key Decisions (confirmed with user)
+## Stack
 
-1. **Student identity: Supabase Anonymous Auth.** The `student-join` Edge Function validates the class code + roster name, then the client obtains a real Supabase anonymous session (`supabase.auth.signInAnonymously()`), which is linked to a specific `class_students` row via a `student_devices.auth_user_id` column. This gives every student table a genuine `auth.uid()`-based RLS policy — the same mental model as teacher policies — plus a defense-in-depth `is_anonymous` JWT claim check so anonymous sessions can never touch teacher-only tables even under a policy mistake. Session persistence is just supabase-js's own localStorage handling — no custom token scheme needed.
+React · TypeScript · Vite · Tailwind CSS · shadcn/ui · Supabase (Postgres,
+Auth, Realtime, Storage, Edge Functions) · DeepL Free API (translation) ·
+Wikidata Lexeme API (lexical enrichment) · Tesseract.js (client-side OCR) ·
+TanStack Query · React Hook Form + Zod · Recharts · Framer Motion · Vercel
 
-2. **AI is a fully optional enhancement layer, not a dependency.** Every core workflow (course/class/lesson creation, activities, vocabulary bank, live games, leaderboards, dashboards) must work completely with **no OpenAI key configured at all** — teachers do everything manually via the same forms AI would otherwise pre-fill. This is a first-class architectural constraint, not just a rate-limit fallback:
-   - Every Edge Function that calls AI checks whether `OPENAI_API_KEY` is configured; if not, it returns a typed `{ aiAvailable: false }` response instead of erroring.
-   - The frontend has one shared `useAiAvailability()` hook (backed by a cheap `ai-status` Edge Function / config flag) that every AI-touching feature reads. When AI is unavailable, "Generate with AI" buttons are replaced by (or sit disabled next to) plain manual-entry forms that are otherwise identical in shape.
-   - Concretely: manual curriculum/lesson/unit creation form (Milestone 5), manual activity builder per activity type (Milestone 6), manual vocab-field entry (translation/pronunciation/example/part of speech typed by the teacher, or left blank) at contribution time (Milestone 8). AI, when available, pre-fills these same forms rather than being a separate code path — this also means there's no throwaway UI once AI is later enabled.
-   - When AI *is* configured, apply conservative per-class/per-teacher daily call caps with graceful degradation (store raw/unenriched data + let the teacher fill in manually) if a cap is hit — same behavior as "AI unavailable," so there's exactly one fallback path to build and test, not two.
-
-3. **Framer Motion added to the stack** for orchestrated animations (leaderboard rank-swaps, game feedback, transitions). Everything else stays exactly as specified.
-
-4. **Minor defaults chosen (low-stakes, revisit anytime):** teacher auth via Supabase Auth email/password (simplest, no OAuth app registration dependency); QR codes generated client-side on the fly from `class_code` (no storage needed, always in sync); curriculum-photo storage in a private Supabase Storage bucket scoped by `{teacher_id}/...` path with signed upload/read URLs; single-teacher-per-course (no co-teaching/school-admin layer) for MVP; OpenAI model names kept as env-configurable rather than hardcoded, since exact current model availability should be checked at implementation time.
-
-## Repo Structure
-
-Single Vite React TS app, Supabase CLI-managed `supabase/` directory alongside `src/`. Feature-first organization.
+## Repo structure
 
 ```
-beelingo/
-├── .env.local / .env.example
-├── supabase/
-│   ├── migrations/            # numbered SQL: extensions, languages seed, core tables, RLS (teacher), RLS (student), realtime publication
-│   ├── seed.sql                # 15 languages + dev demo teacher
-│   └── functions/
-│       ├── _shared/
-│       │   ├── supabaseAdmin.ts, cors.ts
-│       │   ├── ai/             # AI SERVICE ABSTRACTION LAYER (server-only)
-│       │   │   ├── types.ts    # AIProvider interface
-│       │   │   ├── openaiProvider.ts
-│       │   │   ├── promptTemplates/   # parameterized by languages.ai_locale_hints, not per-language branches
-│       │   │   └── index.ts    # getAIProvider() factory + isAiConfigured()
-│       │   ├── rateLimiter.ts
-│       │   └── validation.ts
-│       ├── student-join/, student-session-verify/
-│       ├── ai-curriculum-from-image/, ai-generate-activity/, ai-regenerate-activity/, ai-enrich-vocab/, ai-status/
-│       ├── game-start/, game-submit-answer/
-│       └── vocab-contribute/
-├── src/
-│   ├── lib/{supabase,ai,deviceIdentity.ts,queryClient.ts,utils.ts}
-│   ├── features/{auth,courses,classes,roster,curriculum-builder,lessons,activities,vocabulary,games/{teacher,student},attendance,dashboard-teacher,dashboard-student}
-│   ├── components/{ui,charts,layout}   # TeacherShell (desktop-first), StudentShell (mobile-first)
-│   ├── routes/{teacher,student}        # RequireAuth vs RequireDevice guards
-│   ├── hooks/  (incl. useRealtimeChannel, useAiAvailability, useTheme)
-│   └── styles/globals.css
+src/
+  components/   shared UI (shadcn primitives, layout shells, theme)
+  routes/       route components, split by /t (teacher) and /s (student)
+  features/     feature-first modules (classes, vocabulary, games, dashboards)
+  lib/          Supabase client, TanStack Query client, utilities
+  hooks/        cross-feature hooks
+supabase/
+  migrations/   SQL schema + RLS policies
+  functions/    Edge Functions
+    _shared/enrichment/   DeepL + Wikidata wrappers (server-only, key never client-side)
+    _shared/vocab/        shared dedup-or-create logic (upsertVocabWord)
 ```
 
-**Hard rule:** all OpenAI calls live only in `supabase/functions/**`. The frontend's `lib/ai/aiClient.ts` only calls Edge Functions by name (`supabase.functions.invoke(...)`) — the API key is never bundled client-side.
+Teacher routes (`/t/*`) are desktop-first and auth-gated via Supabase Auth
+(email/password). Student routes (`/s/*`) are mobile-first and gated by a
+device-bound Supabase Anonymous Auth session obtained via the class-code
+join flow at `/join` — no email, password, or account creation. `Class` is
+the top-level teacher-owned entity; there is no course/curriculum layer
+above it.
 
-## Database Schema (Postgres/Supabase, RLS enabled on every table)
+## Database schema (Postgres/Supabase, RLS on every table)
 
-- **`teachers`** (1:1 with `auth.users`), **`languages`** (seed table: 15 languages + `ai_locale_hints jsonb` driving prompt parameterization, code/name/native_name/flag/script direction)
-- **`courses`** (teacher_id, language_id, title, level), **`classes`** (course_id, teacher_id denormalized, name, class_code unique, generated server-side)
-- **`class_students`** (roster: class_id, display_name, is_active — no auth of its own)
-- **`student_devices`** (class_student_id, `auth_user_id` unique → links a Supabase anonymous session to a roster entry, last_seen_at)
-- **`lessons`** (course_id — shared across classes, title, unit/order, objectives, grammar_topic, ai_source_image_url nullable, ai_generated bool, is_published default true — no approval gate)
-- **`lesson_vocab_suggestions`** (AI/manual suggested vocab at curriculum-build time — distinct from the class-level bank)
-- **`lesson_activities`** (lesson_id, type enum of the 8 activity kinds, order_index, `config jsonb`, ai_generated bool)
-- **`vocabulary_bank`** (per-class canonical entries: class_id, word normalized + word_display, translation, pronunciation, example_sentence, part_of_speech, contribution_count, unique `(class_id, word)` → merge-on-duplicate via `ON CONFLICT ... DO UPDATE contribution_count = contribution_count + 1`)
-- **`vocabulary_contributions`** (append-only ledger: vocabulary_bank_id, class_id, class_student_id, lesson_id, raw_word_submitted, created_at — feeds the separate contribution dashboard/leaderboard)
-- **`game_sessions`** (class_id, lesson_id nullable, status enum pending/waiting_room/in_progress/completed/cancelled, current_question_index)
-- **`game_session_participants`** (game_session_id, class_student_id, score, correct_count, avg_response_time_ms)
-- **`game_questions`** (game_session_id, order_index, activity_type, vocabulary_bank_id nullable, `prompt jsonb`, `correct_answer jsonb` — never sent to client until answered)
-- **`game_answers`** (game_question_id, participant_id, submitted_answer, is_correct, response_time_ms — scored server-side only, in `game-submit-answer`, never trusting client-reported correctness)
-- **`attendance`** (class_id, class_student_id, session_date, status, auto-marked present on live-session join)
+**`languages`** — 15-row seed table (English, Portuguese (Brazil),
+Portuguese (Portugal), Spanish, French, German, Italian, Dutch, Japanese,
+Korean, Chinese Simplified, Chinese Traditional, Russian, Arabic, Hindi).
+Columns include `deepl_source_code` / `deepl_target_code`, since DeepL's
+source vs. target code sets aren't 1:1 (e.g. plain `EN` as source but
+`EN-GB`/`EN-US` as target).
 
-### RLS policy shape
-- Teachers: `USING (teacher_id = auth.uid())`, gated additionally by `(auth.jwt() ->> 'is_anonymous') IS NOT TRUE`.
-- Students: a `SECURITY DEFINER` helper `current_class_student_id()` resolves `auth.uid()` → `student_devices.auth_user_id` → `class_students.id`. Write-your-own-row tables (`game_answers`, `vocabulary_contributions`) use `class_student_id = current_class_student_id()`; read-mostly tables (`vocabulary_bank`, `lessons`, `game_sessions`) scope by `class_id = current_class_student_class_id()`. All gated by `(auth.jwt() ->> 'is_anonymous')::boolean = true`.
-- The pre-session roster list (needed on the join screen itself, before any session exists) is served by the `student-join` Edge Function using the service-role key — never a client-side RLS-gated select, since there's no session yet to scope to.
+**`teachers`** — `id` (= `auth.users.id`), `email`, `display_name`,
+`created_at`.
 
-## Realtime Design (Live Games)
+**`classes`** — top-level, no course above it: `id`, `teacher_id`, `name`,
+`class_code` unique, `target_language_id`, `native_language_id` (default
+English), `created_at`, `archived_at` nullable (soft-delete, preserves
+stats history).
 
-One channel per session: `game:{game_session_id}`.
+**`class_students`** (roster) — `id`, `class_id`, `display_name`,
+`joined_at`, `is_active`.
 
-| Concern | Primitive | Why |
-|---|---|---|
-| "Waiting for teacher…" / connected roster | **Presence** | Purpose-built for live who's-here tracking, handles disconnects automatically |
-| Synchronized start, question push, timer sync | **Broadcast** | Ephemeral, low-latency, no DB round trip; payload includes a server `question_start_at` timestamp so all clients' timers share one epoch |
-| Live leaderboard | **Postgres Changes** on `game_session_participants` | Score is server-computed truth (via `game-submit-answer` Edge Function validating against `game_questions.correct_answer`); DB update is the single source both teacher and students subscribe to — avoids a second, divergent broadcast-based leaderboard |
+**`student_devices`** — links a Supabase Anonymous Auth session to a
+roster entry (`auth_user_id` ↔ `class_student_id`).
 
-Question pacing for MVP is **teacher-triggered** ("next question" button), not a blind auto-timer — keeps the teacher in control of pace per the "teacher teaches" philosophy. Leaderboard is torn down at game end; historical results persist in `game_session_participants`/`game_answers` for past-game-history views, which is a separate query path from the live channel.
+**`vocabulary_bank`** (heart of the app) — `id`, `class_id`, `word`,
+`translation` nullable, `word_type` nullable, `gender` nullable, `plural`
+nullable, `teacher_notes` nullable, `practice_sentence` nullable,
+`teacher_audio_path` nullable, `added_by` enum(`teacher`/`student`),
+`added_by_class_student_id` nullable FK, `verified_by_teacher` boolean
+default false, `created_at`, `translation_source`
+enum(`deepl`/`manual`/`none`), `translated_at` nullable, `lexical_source`
+enum(`wikidata`/`none`), `lexical_fetched_at` nullable, `enrichment_status`
+enum(`pending`/`success`/`partial`/`failed`). **Unique `(class_id,
+lower(word))`** — the merge-on-duplicate key.
 
-## AI Service Abstraction Layer
+**`vocabulary_contributions`** (ledger) — `id`, `vocabulary_bank_id`,
+`class_student_id`, `contributed_at`, `is_first_contribution` boolean.
+Contribution counts are derived (`count(*) group by vocabulary_bank_id`),
+not cached — one source of truth at classroom scale.
 
-`AIProvider` interface (`_shared/ai/types.ts`): `generateCurriculumFromImage`, `generateActivity`, `enrichVocabWord`, `translateWord`, `regenerateActivity` — every method takes a `languageCode` and prompt templates interpolate `languages.ai_locale_hints` (romanization, pronunciation notation, script direction) so adding language #16 is a seed-data insert, not new code. `getAIProvider()` factory reads `AI_PROVIDER` env var; swapping to another provider later means adding one file + flipping the env var. `isAiConfigured()` (checks `OPENAI_API_KEY` presence) backs the `ai-status` Edge Function and every other AI Edge Function's early-return path per Decision #2 above.
+**`game_sessions`** — `id`, `class_id`, `teacher_id`, `game_type`
+enum(matching/flashcards/speed_translation/reverse_translation/
+typing_challenge/memory_challenge/fill_in_blank/team_battle),
+`word_set_filter` enum(today/last_week/random/entire_bank), `status`
+enum(waiting/active/completed/cancelled), `settings` jsonb, `started_at`,
+`ended_at`.
 
-Curriculum photo upload: signed upload URL to a private Storage bucket (`{teacher_id}/...` path), Edge Function passes a signed read URL (not base64) to the vision-capable model to avoid Edge Function payload limits.
+**`game_session_participants`** — `id`, `game_session_id`,
+`class_student_id`, `team` nullable (Team Battle only), `score`,
+`correct_count`, `incorrect_count`, `joined_at`, `last_seen_at`.
 
-## Phased MVP Build Plan
+**`game_questions`** — `id`, `game_session_id`, `sequence_index`,
+`vocabulary_bank_id`, `question_payload` jsonb (never includes the correct
+answer).
 
-Each milestone is independently demoable; ordering respects dependencies.
+**`game_answers`** — `id`, `game_question_id`,
+`game_session_participant_id`, `submitted_answer`, `is_correct`
+(server-computed only), `response_time_ms`, `answered_at`.
 
-- **M0 — Accounts & environment bootstrap.** Create Supabase project, OpenAI account/key (optional — app must run without it per Decision #2), Vercel project; `.env.local` populated; Supabase CLI linked; `supabase db push` verified against a blank remote DB.
-- **M1 — Scaffold + design system.** Vite/React/TS/Tailwind/shadcn installed; dark/light mode; `TeacherShell`/`StudentShell` static mockups; TanStack Query + Router skeleton (`/t`, `/s`, `/join`); empty-shell Vercel deploy proves the pipeline.
-- **M2 — Supabase schema + teacher auth.** All core tables + teacher RLS migrated; email/password auth wired (`features/auth`); `teachers` row created on signup; `/t/*` route guard. Demo: sign up, log in, empty authenticated dashboard, log out.
-- **M3 — Course/Class/Roster CRUD.** Full CRUD incl. class-code generation + client-side QR rendering, bulk roster paste, RHF+Zod forms, optimistic TanStack mutations.
-- **M4 — Student join flow + device identity.** `student-join` Edge Function (class code + name validation, Anonymous Auth session issuance, `student_devices` link), `/s/join` UI, auto-recognition on repeat visits, student RLS goes live. Demo: join on a phone, refresh, auto-recognized.
-- **M5 — Curriculum builder (manual-first, AI-enhanced).** Manual unit/lesson creation form is the baseline; when AI is configured, ToC-photo upload → `ai-curriculum-from-image` pre-fills the same editable form instead of a separate flow. Demo both with and without an AI key configured.
-- **M6 — Lesson & Activity CRUD (manual-first, AI-enhanced).** Manual activity builder per type is the baseline; `ai-generate-activity`/`ai-regenerate-activity` pre-fill it when available. Reorder/edit/delete.
-- **M7 — Live Game Engine (Realtime).** Presence + Broadcast + Postgres Changes per Section above; teacher host console; student play screen; server-side scoring. Test with two browser tabs before a full classroom playtest — highest-complexity milestone.
-- **M8 — Vocabulary contributions + bank.** End-of-lesson prompt UI; `vocab-contribute` Edge Function (manual field entry baseline, AI enrichment pre-fill when available, merge-on-duplicate upsert, ledger insert); Vocabulary Bank table view; game question generator (M7) wired to pull from the bank, mixing new + previously-learned words.
-- **M9 — Analytics dashboards.** Teacher Dashboard (overview, hardest vocab/grammar, vocab dashboard) via Recharts; separate Contribution Dashboard/leaderboard (total/today/weekly/lifetime); Student Dashboard (streak, quiz history, accuracy, contributions, game history).
-- **M10 — Polish & deploy hardening.** Framer Motion animation pass (leaderboard rank-swap, game feedback, transitions); attendance auto-marking wiring; AI cap/graceful-degradation wiring where a key is configured; production Vercel env vars; Supabase production settings (pooling, auth email templates, storage CORS); error boundaries/loading skeletons; full end-to-end demo in both themes, desktop (teacher) and phone (student).
+**`student_activity_days`** — `(class_student_id, activity_date)` PK pair,
+upserted (`ON CONFLICT DO NOTHING`) from `game-submit-answer` and
+`vocab-contribute`; backs the learning-streak stat cheaply without
+scanning large event tables.
 
-## Verification Approach
+No `courses`, `lessons`, `lesson_vocab_suggestions`, `lesson_activities`,
+`attendance`, or any AI/prompt/provider tables exist in this design.
 
-- Each milestone ends with a manual demo script (noted above) run against the actual deployed/dev environment — not just unit tests, since this is a UX-critical classroom tool.
-- M2 onward: verify RLS by testing as both a teacher session and a second browser profile as a student session, confirming cross-class/cross-role access is denied (e.g., Student A cannot read Student B's `game_answers`, a teacher cannot see another teacher's courses).
-- M5, M6, M8 each explicitly verified twice: once with `OPENAI_API_KEY` unset (manual path fully functional) and once with it set (AI pre-fill works and remains editable) — this is the core "AI is optional" architectural constraint and needs to be demonstrated, not just asserted.
-- M7 verified with a real multi-client test (two+ simultaneous browser sessions) confirming synchronized start and live leaderboard update ordering.
+### RLS
+
+Two `security definer` helpers, reused across table and Storage policies:
+`is_class_teacher(class_id)` and `is_class_member(class_id)`. Students
+never get direct insert rights on score-bearing tables (`game_answers`) —
+those routes go through Edge Functions using the service role after
+server-side validation.
+
+### Storage — `teacher-audio` bucket (private)
+
+Path: `{class_id}/{vocabulary_bank_id}/audio.webm` (fixed name, re-record
+= upsert, no orphaned files). Teacher: insert/update/delete where
+`is_class_teacher`. Student: select-only where `is_class_member`, via
+short-lived signed URLs.
+
+## Enrichment service (not AI)
+
+`supabase/functions/_shared/enrichment/`:
+- `translateWord.ts` — DeepL wrapper. Translates a brand-new word exactly
+  once; result is stored permanently on the `vocabulary_bank` row and
+  never re-fetched. If DeepL fails or the free-tier quota (500,000
+  chars/month) is exhausted, the row is still created with
+  `translation = null` and the teacher can enter it manually or retry
+  later — creation is never blocked.
+- `lookupLexicalInfo.ts` — Wikidata Lexeme API wrapper
+  (`wbsearchentities` → `wbgetentities`), fetching word type, gender, and
+  plural where available. Missing fields stay blank and teacher-editable.
+- `enrichNewWord.ts` — orchestrator, runs both via `Promise.allSettled`
+  (independent failures don't block each other), derives
+  `enrichment_status`.
+
+Deliberately **not** a swappable-provider abstraction (unlike a typical AI
+layer) — DeepL and Wikidata are fixed, non-interchangeable APIs, so that
+indirection would be pure overhead.
+
+`supabase/functions/_shared/vocab/upsertVocabWord.ts` is the single shared
+dedup-or-create implementation, called by every word-creation Edge
+Function (`vocab-contribute`, `vocab-create-manual`, `vocab-ocr-import`)
+so merge-on-duplicate logic exists in exactly one place. Enrichment only
+fires on the "brand-new row" branch; a duplicate submission only inserts a
+`vocabulary_contributions` row and increments the derived count.
+
+## OCR import
+
+Client-side only, via `tesseract.js`'s Web Worker (`createWorker`) — off
+the main thread. Language pack lazy-loaded per the class's target
+language from Tesseract's default CDN, browser-cached after first use;
+never bundled into the app build. Flow: photo → OCR → tokenize into
+candidate words → review UI (checklist + editable text per candidate,
+since OCR misreads are common) → confirmed set posts to
+`vocab-ocr-import`, which runs through the same `upsertVocabWord` +
+`enrichNewWord` pipeline as any other word source. OCR is only ever used
+to import a flat word list — never for curriculum or lesson extraction.
+
+## Teacher audio
+
+Browser `MediaRecorder` API (native, no dependency) → `audio/webm;
+codecs=opus` with an `audio/mp4` fallback for Safari → direct
+authenticated upload to `teacher-audio` at the fixed path (RLS-enforced,
+`upsert: true`). No AI-generated or synthesized pronunciation anywhere —
+only real teacher recordings. Students see a play button only when a
+recording exists; otherwise it's simply absent.
+
+## Games engine
+
+Live, synchronized, Kahoot-style — reuses Supabase Realtime the same way
+regardless of game type:
+
+| Concern | Primitive |
+|---|---|
+| Waiting room / connected roster | **Presence** |
+| Synchronized start, question push, timer sync | **Broadcast** |
+| Live leaderboard | **Postgres Changes** on `game_session_participants` |
+
+Question generation is 100% deterministic, computed in `game-start` from
+`vocabulary_bank` — never AI:
+
+1. **Word-set filter**: Today's Words / Last Week / Random / Entire Bank.
+2. **Game-type eligibility filter** on top (e.g. Fill in the Blank
+   requires a non-null `practice_sentence`).
+3. **Per-question payload**: multiple-choice types (Speed Translation,
+   Reverse Translation) sample 3 distractors via `ORDER BY random()` from
+   the same class's bank; Typing Challenge grades free text server-side,
+   case-insensitively; Fill in the Blank masks the target word in its
+   `practice_sentence`; Matching/Memory Challenge batch N pairs per round;
+   Flashcards are ungraded self-paced review.
+
+If the eligible word count after both filters falls below a configurable
+minimum (default 4–5), `game-start` rejects before creating the session,
+and the teacher UI surfaces the shortfall up front.
+
+**Team Battle**: `game_session_participants.team` is populated only for
+this mode; the teacher manually assigns teams or triggers a shuffle-based
+auto-balance at start; the leaderboard aggregates by team when present.
+
+**Scoring**: `game-submit-answer` resolves the real answer server-side
+from `game_questions`, never trusts a client-claimed correctness, computes
+`is_correct` and a score delta, writes `game_answers`, and updates
+`game_session_participants.score` — which is what drives the Postgres
+Changes leaderboard for everyone.
+
+## Statistics
+
+- **Cheap live queries**: Vocabulary Collected, Recent Games, Average
+  Accuracy, Games Played, Accuracy, Contributions.
+- **Small views/RPCs**: `class_top_contributors(class_id)`,
+  `vocabulary_miss_stats(vocabulary_bank_id, class_id, times_asked,
+  times_missed, miss_rate)`.
+- **Learning Streak**: backed by `student_activity_days` — a trivial RPC
+  walking a tiny per-student table backward from today.
+- **Vocabulary Learned** (student stat): distinct `vocabulary_bank` rows
+  the student has contributed **or** answered correctly at least once.
+
+## Export
+
+Fully client-side, no new Edge Functions. CSV is hand-rolled (no
+dependency); Excel via `xlsx` (SheetJS); PDF via `jspdf` +
+`jspdf-autotable` — both dynamically imported so they only load when a
+role's export panel opens. Filters (entire vocabulary / today / last week
+/ my contributions) reuse each role's existing RLS-scoped reads. "My
+contributions" (student-only) = any `vocabulary_bank` row the student has
+a ledger row against, first or reinforcing.
+
+## Milestone plan
+
+- **M0/M1** — Bootstrap / scaffold. **Done.**
+- **M2** — Core schema + teacher auth.
+- **M3** — Class CRUD + roster + class code + QR.
+- **M4** — Student join flow (Anonymous Auth + device recognition).
+- **M5** — Vocabulary bank core: manual entry + enrichment pipeline.
+- **M6** — OCR import.
+- **M7** — Student vocabulary contributions.
+- **M8** — Teacher audio recording.
+- **M9** — Games engine (all 8 types, live leaderboard, Team Battle).
+- **M10** — Statistics dashboards.
+- **M11** — Export (CSV/XLSX/PDF).
+- **M12** — Polish & deploy.
+
+Each milestone is independently demoable.

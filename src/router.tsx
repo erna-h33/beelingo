@@ -14,7 +14,7 @@ const JoinPage = lazy(() => import("@/routes/JoinPage"))
 const NotFoundPage = lazy(() => import("@/routes/NotFoundPage"))
 
 const TeacherDashboardPage = lazy(() => import("@/routes/teacher/DashboardPage"))
-const TeacherCoursesPage = lazy(() => import("@/routes/teacher/CoursesPage"))
+const TeacherClassesPage = lazy(() => import("@/routes/teacher/ClassesPage"))
 
 const StudentDashboardPage = lazy(() => import("@/routes/student/DashboardPage"))
 const StudentVocabularyPage = lazy(() => import("@/routes/student/VocabularyPage"))
@@ -35,7 +35,7 @@ const router = createBrowserRouter([
         element: <TeacherShell />,
         children: [
           { index: true, element: withSuspense(<TeacherDashboardPage />) },
-          { path: "courses", element: withSuspense(<TeacherCoursesPage />) },
+          { path: "classes", element: withSuspense(<TeacherClassesPage />) },
         ],
       },
     ],
