@@ -67,6 +67,44 @@ export interface ContributeWordResult {
   isNew: boolean
 }
 
+export type GameType =
+  | "matching"
+  | "flashcards"
+  | "speed_translation"
+  | "reverse_translation"
+  | "typing_challenge"
+  | "memory_challenge"
+  | "fill_in_blank"
+  | "team_battle"
+
+export type WordSetFilter = "today" | "random" | "entire_hive" | "by_topic"
+
+/** Return shape of the `game_create_session` RPC (0019). */
+export interface GameCreateSessionResult {
+  sessionId: string
+  questionCount: number
+}
+
+export interface GameStartSessionResult {
+  sessionId: string
+  status: "active"
+}
+
+export interface GameAdvanceQuestionResult {
+  currentQuestionIndex: number
+  isLast: boolean
+}
+
+export interface GameSubmitAnswerResult {
+  isCorrect: boolean
+  pointsAwarded: number
+}
+
+export interface GameEndSessionResult {
+  sessionId: string
+  status: "completed"
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -242,6 +280,78 @@ export interface Database {
         Update: never
         Relationships: []
       }
+      game_sessions: {
+        Row: {
+          id: string
+          class_id: string
+          teacher_id: string
+          game_type: GameType
+          word_set_filter: WordSetFilter
+          status: "waiting" | "active" | "completed" | "cancelled"
+          settings: { questionCount?: number; topic?: string; teamCount?: number }
+          current_question_index: number
+          started_at: string | null
+          ended_at: string | null
+          created_at: string
+        }
+        // Only ever written via game_create_session/game_start_session/
+        // game_end_session (all SECURITY DEFINER).
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      game_session_participants: {
+        Row: {
+          id: string
+          game_session_id: string
+          class_student_id: string
+          team: string | null
+          score: number
+          correct_count: number
+          incorrect_count: number
+          joined_at: string
+          last_seen_at: string
+        }
+        Insert: {
+          id?: string
+          game_session_id: string
+          class_student_id: string
+        }
+        // Score/team fields are only ever written via game_submit_answer/
+        // game_start_session (SECURITY DEFINER) -- no client update path.
+        Update: never
+        Relationships: []
+      }
+      game_questions: {
+        Row: {
+          id: string
+          game_session_id: string
+          sequence_index: number
+          hive_word_id: string | null
+          question_payload: Record<string, unknown>
+          created_at: string
+        }
+        // Only ever written via game_create_session (SECURITY DEFINER).
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      game_answers: {
+        Row: {
+          id: string
+          game_question_id: string
+          game_session_participant_id: string
+          submitted_answer: Record<string, unknown> | null
+          is_correct: boolean
+          response_time_ms: number | null
+          answered_at: string
+        }
+        // Only ever written via game_submit_answer (SECURITY DEFINER) --
+        // grading always happens server-side, never trusting the client.
+        Insert: never
+        Update: never
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {
@@ -269,6 +379,36 @@ export interface Database {
           p_enrichment_status?: string
         }
         Returns: ContributeWordResult
+      }
+      game_create_session: {
+        Args: {
+          p_class_id: string
+          p_game_type: GameType
+          p_word_set_filter: WordSetFilter
+          p_settings?: Record<string, unknown>
+        }
+        Returns: GameCreateSessionResult
+      }
+      game_start_session: {
+        Args: { p_session_id: string }
+        Returns: GameStartSessionResult
+      }
+      game_advance_question: {
+        Args: { p_session_id: string }
+        Returns: GameAdvanceQuestionResult
+      }
+      game_submit_answer: {
+        Args: {
+          p_game_question_id: string
+          p_participant_id: string
+          p_submitted_answer: Record<string, unknown>
+          p_response_time_ms?: number | null
+        }
+        Returns: GameSubmitAnswerResult
+      }
+      game_end_session: {
+        Args: { p_session_id: string }
+        Returns: GameEndSessionResult
       }
     }
   }

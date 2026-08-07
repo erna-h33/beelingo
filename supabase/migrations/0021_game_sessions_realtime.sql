@@ -1,0 +1,11 @@
+-- Architecture simplification from docs/architecture.md: rather than a
+-- separate Broadcast channel for "synchronized start, question push,
+-- timer sync" alongside Postgres Changes for the leaderboard, this build
+-- uses Postgres Changes for everything state-related (session status +
+-- current_question_index, and the participants leaderboard). One
+-- realtime mechanism instead of two -- Postgres Changes is fast enough
+-- at classroom scale, and it collapses an entire class of message-
+-- format/reconnection-drift bugs a dual-channel design invites. Presence
+-- is still used, but only for the waiting-room "who's connected" roster,
+-- which is what it's actually purpose-built for.
+alter publication supabase_realtime add table public.game_sessions;

@@ -1,14 +1,20 @@
-import { Gamepad2 } from "lucide-react"
-
-import { PlaceholderPage } from "@/components/placeholder-page"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useStudentSessionQuery } from "@/features/studentSession/useStudentSession"
+import { PlayerShell } from "@/features/games/student/PlayerShell"
 
 export default function GamePage() {
-  return (
-    <PlaceholderPage
-      icon={Gamepad2}
-      title="Waiting for teacher…"
-      description="Live classroom games will appear here the moment your teacher starts one."
-      milestone="M9"
-    />
-  )
+  const { data: session, isLoading } = useStudentSessionQuery()
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-3">
+        <Skeleton className="h-8 w-40" />
+        <Skeleton className="h-56" />
+      </div>
+    )
+  }
+
+  if (!session) return null
+
+  return <PlayerShell classId={session.classId} classStudentId={session.classStudentId} />
 }
