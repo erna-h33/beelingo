@@ -40,8 +40,16 @@ export function useJoinClassMutation() {
       if (error) throw error
       return data
     },
-    onSuccess: () => {
-      invalidateStudentSession()
-    },
+    // Returning (not just calling) invalidateStudentSession() matters:
+    // useMutation awaits whatever onSuccess returns before considering
+    // the mutation settled, so mutateAsync() in JoinPage's
+    // handlePickName won't resolve -- and navigate("/s") won't fire --
+    // until the session query has actually refetched. Without the
+    // `return`, invalidation was fire-and-forget: navigation could beat
+    // the refetch, and RequireDevice would see the still-stale cached
+    // `session: null` (isLoading is only true on a query's very first
+    // fetch, not a background refetch of already-cached data) and
+    // immediately bounce back to /join.
+    onSuccess: () => invalidateStudentSession(),
   })
 }
