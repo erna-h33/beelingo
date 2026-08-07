@@ -130,6 +130,52 @@ export interface ClassStudentStat {
   incorrectCount: number
 }
 
+/** One row of `teacher_dashboard_stats`' topContributors (0024). */
+export interface TopContributor {
+  classStudentId: string
+  displayName: string
+  className: string
+  contributionCount: number
+}
+
+/** One row of `teacher_dashboard_stats`' mostMissedWords (0024) --
+ * same shape as ClassWordStat plus a className label since results
+ * span every class the teacher owns. */
+export interface TeacherMostMissedWord {
+  hiveWordId: string
+  word: string
+  translation: string | null
+  className: string
+  attempts: number
+  correct: number
+  missRate: number
+}
+
+/** Return shape of the `teacher_dashboard_stats` RPC (0024). */
+export interface TeacherDashboardStats {
+  totalClasses: number
+  totalHiveWords: number
+  newWordsThisWeek: number
+  totalActiveStudents: number
+  totalGamesPlayed: number
+  averageAccuracy: number | null
+  topContributors: TopContributor[]
+  mostMissedWords: TeacherMostMissedWord[]
+}
+
+/** Return shape of the `student_dashboard_stats` RPC (0024).
+ * `wordsLearned` is a proxy metric (distinct words answered correctly
+ * at least once) -- deliberately not mastery_score, which stays fully
+ * internal even here. */
+export interface StudentDashboardStats {
+  gamesPlayed: number
+  correctCount: number
+  incorrectCount: number
+  contributionsCount: number
+  wordsLearned: number
+  streakDays: number
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -442,6 +488,14 @@ export interface Database {
       class_student_stats: {
         Args: { p_class_id: string }
         Returns: ClassStudentStat[]
+      }
+      teacher_dashboard_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: TeacherDashboardStats
+      }
+      student_dashboard_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: StudentDashboardStats
       }
     }
   }

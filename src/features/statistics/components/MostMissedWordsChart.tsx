@@ -1,9 +1,18 @@
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 
-import type { ClassWordStat } from "@/lib/supabase/types"
+/** Structural subset shared by ClassWordStat (0023, one class) and
+ * TeacherMostMissedWord (0024, across every class a teacher owns) --
+ * this chart only ever needs these four fields, so it accepts either
+ * without a cast. */
+interface MissedWordLike {
+  word: string
+  translation: string | null
+  attempts: number
+  missRate: number
+}
 
 interface MostMissedWordsChartProps {
-  stats: ClassWordStat[]
+  stats: MissedWordLike[]
 }
 
 /** Horizontal bar chart of cumulative miss-rate per word -- deliberately
