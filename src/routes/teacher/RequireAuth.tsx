@@ -1,12 +1,24 @@
-import { Outlet } from "react-router-dom"
+import { Navigate, Outlet } from "react-router-dom"
+
+import { useAuth } from "@/features/auth/useAuth"
+import { RouteLoading } from "@/components/route-loading"
 
 /**
  * Guards all /t/* routes behind a teacher's Supabase Auth session.
- *
- * Stubbed as a pass-through for M1 (no Supabase project wired up yet).
- * M2 replaces this with a real session check (redirect to /t/login when
- * unauthenticated) once teacher auth is implemented.
+ * Redirects to /t/login when unauthenticated; renders nothing (past the
+ * loading spinner) until the initial session check resolves, so a
+ * logged-out teacher never sees a flash of protected content.
  */
 export function RequireAuth() {
+  const { status } = useAuth()
+
+  if (status === "loading") {
+    return <RouteLoading />
+  }
+
+  if (status === "unauthenticated") {
+    return <Navigate to="/t/login" replace />
+  }
+
   return <Outlet />
 }

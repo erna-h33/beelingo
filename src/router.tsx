@@ -13,6 +13,7 @@ const LandingPage = lazy(() => import("@/routes/LandingPage"))
 const JoinPage = lazy(() => import("@/routes/JoinPage"))
 const NotFoundPage = lazy(() => import("@/routes/NotFoundPage"))
 
+const TeacherLoginPage = lazy(() => import("@/routes/teacher/LoginPage"))
 const TeacherDashboardPage = lazy(() => import("@/routes/teacher/DashboardPage"))
 const TeacherClassesPage = lazy(() => import("@/routes/teacher/ClassesPage"))
 
@@ -27,6 +28,7 @@ function withSuspense(element: ReactNode) {
 const router = createBrowserRouter([
   { path: "/", element: withSuspense(<LandingPage />) },
   { path: "/join", element: withSuspense(<JoinPage />) },
+  { path: "/t/login", element: withSuspense(<TeacherLoginPage />) },
   {
     path: "/t",
     element: <RequireAuth />,

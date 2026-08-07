@@ -1,7 +1,10 @@
-import { Link, NavLink, Outlet } from "react-router-dom"
+import { Link, NavLink, Outlet, useNavigate } from "react-router-dom"
 import { Users, LayoutDashboard, GraduationCap } from "lucide-react"
+import { toast } from "sonner"
 
 import { cn } from "@/lib/utils"
+import { supabase } from "@/lib/supabase/client"
+import { useAuth } from "@/features/auth/useAuth"
 import { ThemeToggle } from "@/components/theme-toggle"
 import {
   Avatar,
@@ -11,6 +14,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
@@ -26,6 +30,20 @@ const NAV_ITEMS = [
  * this shell's parent route, not the shell itself.
  */
 export function TeacherShell() {
+  const { session } = useAuth()
+  const navigate = useNavigate()
+  const email = session?.user.email ?? ""
+  const initial = email.charAt(0).toUpperCase() || "T"
+
+  async function handleSignOut() {
+    const { error } = await supabase.auth.signOut()
+    if (error) {
+      toast.error("Couldn't sign out", { description: error.message })
+      return
+    }
+    navigate("/", { replace: true })
+  }
+
   return (
     <div className="flex min-h-dvh bg-background text-foreground">
       <aside className="hidden w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex">
@@ -67,14 +85,22 @@ export function TeacherShell() {
               <DropdownMenuTrigger className="rounded-full outline-none ring-ring/50 focus-visible:ring-2">
                 <Avatar className="size-8">
                   <AvatarFallback className="bg-primary/15 text-primary text-xs font-semibold">
-                    T
+                    {initial}
                   </AvatarFallback>
                 </Avatar>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                {email && (
+                  <>
+                    <DropdownMenuLabel className="truncate font-normal text-muted-foreground">
+                      {email}
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
                 <DropdownMenuItem disabled>Account settings</DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive" disabled>
+                <DropdownMenuItem variant="destructive" onSelect={handleSignOut}>
                   Sign out
                 </DropdownMenuItem>
               </DropdownMenuContent>
