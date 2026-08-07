@@ -9,6 +9,14 @@ function invalidateHive(queryClient: ReturnType<typeof useQueryClient>, classId:
   queryClient.invalidateQueries({ queryKey: ["classes", classId, "hive"] })
 }
 
+/** Refetches the Hive list after something outside a mutation hook
+ * changes it -- e.g. the OCR batch import, which inserts many rows in a
+ * loop and invalidates once at the end rather than per row. */
+export function useInvalidateHive(classId: string) {
+  const queryClient = useQueryClient()
+  return () => invalidateHive(queryClient, classId)
+}
+
 export function useHiveWordsQuery(classId: string | undefined) {
   return useQuery({
     queryKey: ["classes", classId, "hive"],
@@ -25,7 +33,7 @@ export function useHiveWordsQuery(classId: string | undefined) {
   })
 }
 
-interface CreateHiveWordInput {
+export interface CreateHiveWordInput {
   classId: string
   word: string
   translation?: string
@@ -35,40 +43,47 @@ interface CreateHiveWordInput {
   topic?: string
   practiceSentence?: string
   teacherNotes?: string
+  /** Defaults to "teacher" -- the OCR import flow passes "ocr" instead. */
+  source?: HiveWord["source"]
   translationSource?: "deepl" | "manual" | "none"
   lexicalSource?: "wikidata" | "none"
   enrichmentStatus?: "pending" | "success" | "partial" | "failed"
 }
 
+/** Plain insert, reused by both the single-word mutation below and the
+ * OCR batch import (which calls this directly in a loop and invalidates
+ * once at the end, rather than spinning up a mutation per word). */
+export async function insertHiveWord(input: CreateHiveWordInput): Promise<HiveWord> {
+  const now = new Date().toISOString()
+  const { data, error } = await supabase
+    .from("hive_words")
+    .insert({
+      class_id: input.classId,
+      word: input.word,
+      translation: input.translation || null,
+      word_type: input.wordType || null,
+      gender: input.gender || null,
+      plural: input.plural || null,
+      topic: input.topic || null,
+      practice_sentence: input.practiceSentence || null,
+      teacher_notes: input.teacherNotes || null,
+      source: input.source ?? "teacher",
+      translation_source: input.translationSource ?? (input.translation ? "manual" : "none"),
+      translated_at: input.translation ? now : null,
+      lexical_source: input.lexicalSource ?? "none",
+      lexical_fetched_at: input.lexicalSource === "wikidata" ? now : null,
+      enrichment_status: input.enrichmentStatus ?? "pending",
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return data as HiveWord
+}
+
 export function useCreateHiveWordMutation(classId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (input: CreateHiveWordInput) => {
-      const now = new Date().toISOString()
-      const { data, error } = await supabase
-        .from("hive_words")
-        .insert({
-          class_id: input.classId,
-          word: input.word,
-          translation: input.translation || null,
-          word_type: input.wordType || null,
-          gender: input.gender || null,
-          plural: input.plural || null,
-          topic: input.topic || null,
-          practice_sentence: input.practiceSentence || null,
-          teacher_notes: input.teacherNotes || null,
-          source: "teacher",
-          translation_source: input.translationSource ?? (input.translation ? "manual" : "none"),
-          translated_at: input.translation ? now : null,
-          lexical_source: input.lexicalSource ?? "none",
-          lexical_fetched_at: input.lexicalSource === "wikidata" ? now : null,
-          enrichment_status: input.enrichmentStatus ?? "pending",
-        })
-        .select()
-        .single()
-      if (error) throw error
-      return data as HiveWord
-    },
+    mutationFn: insertHiveWord,
     onSuccess: () => invalidateHive(queryClient, classId),
   })
 }

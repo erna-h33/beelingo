@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
 import { useParams } from "react-router-dom"
-import { Plus, Search, Sparkles } from "lucide-react"
+import { ImageUp, Plus, Search, Sparkles } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -17,6 +17,7 @@ import { useClassQuery } from "@/features/classes/useClasses"
 import { useCreateHiveWordMutation, useHiveWordsQuery } from "@/features/hive/useHiveWords"
 import { HiveWordFormDialog } from "@/features/hive/components/HiveWordFormDialog"
 import { HiveWordsTable } from "@/features/hive/components/HiveWordsTable"
+import { OcrImportDialog } from "@/features/hive/components/OcrImportDialog"
 
 const ALL_TOPICS = "__all__"
 
@@ -48,6 +49,11 @@ export default function ClassHivePage() {
     })
   }, [words, search, topic])
 
+  const existingWordsLower = useMemo(
+    () => new Set((words ?? []).map((w) => w.word.toLowerCase())),
+    [words],
+  )
+
   if (!classId) return null
 
   return (
@@ -59,47 +65,64 @@ export default function ClassHivePage() {
             Every word this class has collected. Everything here is editable.
           </p>
         </div>
-        <HiveWordFormDialog
-          open={addOpen}
-          onOpenChange={setAddOpen}
-          trigger={
-            <Button size="sm">
-              <Plus className="size-4" />
-              Add word
-            </Button>
-          }
-          title="Add a word"
-          description="Type the word and look it up, or fill everything in yourself."
-          submitLabel="Add to Hive"
-          enrichment={
-            classItem
-              ? {
-                  learningLanguageCode: classItem.learning_language.code,
-                  deeplSourceCode: classItem.learning_language.deepl_source_code,
-                  deeplTargetCode: classItem.display_language.deepl_target_code,
-                }
-              : undefined
-          }
-          onSubmit={async (values) => {
-            try {
-              await createWord.mutateAsync({ classId, ...values })
-              toast.success(`"${values.word}" added to the Hive`)
-            } catch (error) {
-              // Postgres unique_violation (hive_words_class_word_unique) --
-              // check the error code, not the message text: Supabase's
-              // PostgrestError doesn't always survive an `instanceof Error`
-              // check once it's passed through TanStack Query's mutation
-              // pipeline, but `code` is a plain, reliable string field.
-              const code = (error as { code?: string } | null)?.code
-              const message = error instanceof Error ? error.message : undefined
-              const isDuplicate = code === "23505"
-              toast.error(isDuplicate ? "That word is already in the Hive" : "Couldn't add word", {
-                description: isDuplicate ? undefined : message,
-              })
-              throw error
+        <div className="flex gap-2">
+          {classItem && (
+            <OcrImportDialog
+              classId={classId}
+              learningLanguageCode={classItem.learning_language.code}
+              deeplSourceCode={classItem.learning_language.deepl_source_code}
+              deeplTargetCode={classItem.display_language.deepl_target_code}
+              existingWordsLower={existingWordsLower}
+              trigger={
+                <Button size="sm" variant="outline">
+                  <ImageUp className="size-4" />
+                  Import from photo
+                </Button>
+              }
+            />
+          )}
+          <HiveWordFormDialog
+            open={addOpen}
+            onOpenChange={setAddOpen}
+            trigger={
+              <Button size="sm">
+                <Plus className="size-4" />
+                Add word
+              </Button>
             }
-          }}
-        />
+            title="Add a word"
+            description="Type the word and look it up, or fill everything in yourself."
+            submitLabel="Add to Hive"
+            enrichment={
+              classItem
+                ? {
+                    learningLanguageCode: classItem.learning_language.code,
+                    deeplSourceCode: classItem.learning_language.deepl_source_code,
+                    deeplTargetCode: classItem.display_language.deepl_target_code,
+                  }
+                : undefined
+            }
+            onSubmit={async (values) => {
+              try {
+                await createWord.mutateAsync({ classId, ...values })
+                toast.success(`"${values.word}" added to the Hive`)
+              } catch (error) {
+                // Postgres unique_violation (hive_words_class_word_unique) --
+                // check the error code, not the message text: Supabase's
+                // PostgrestError doesn't always survive an `instanceof Error`
+                // check once it's passed through TanStack Query's mutation
+                // pipeline, but `code` is a plain, reliable string field.
+                const code = (error as { code?: string } | null)?.code
+                const message = error instanceof Error ? error.message : undefined
+                const isDuplicate = code === "23505"
+                toast.error(isDuplicate ? "That word is already in the Hive" : "Couldn't add word", {
+                  description: isDuplicate ? undefined : message,
+                })
+                throw error
+              }
+            }}
+          />
+        </div>
       </div>
 
       {!isLoading && words && words.length > 0 && (
