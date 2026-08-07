@@ -17,7 +17,7 @@ const TeacherDashboardPage = lazy(() => import("@/routes/teacher/DashboardPage")
 const TeacherClassesPage = lazy(() => import("@/routes/teacher/ClassesPage"))
 
 const StudentDashboardPage = lazy(() => import("@/routes/student/DashboardPage"))
-const StudentVocabularyPage = lazy(() => import("@/routes/student/VocabularyPage"))
+const StudentHivePage = lazy(() => import("@/routes/student/HivePage"))
 const StudentGamePage = lazy(() => import("@/routes/student/GamePage"))
 
 function withSuspense(element: ReactNode) {
@@ -48,7 +48,7 @@ const router = createBrowserRouter([
         element: <StudentShell />,
         children: [
           { index: true, element: withSuspense(<StudentDashboardPage />) },
-          { path: "vocabulary", element: withSuspense(<StudentVocabularyPage />) },
+          { path: "hive", element: withSuspense(<StudentHivePage />) },
           { path: "game", element: withSuspense(<StudentGamePage />) },
         ],
       },

@@ -1,10 +1,11 @@
 # Beelingo
 
-A collaborative classroom vocabulary platform. Teachers and students build a
-shared vocabulary bank together, and that bank automatically powers live
-classroom games — no student accounts required.
+A collaborative classroom vocabulary platform, built around **the Hive** —
+the shared vocabulary collection for a class. Students contribute to it,
+teachers enrich it, and it automatically powers live classroom games — no
+student accounts required.
 
-> Build your class's vocabulary, together.
+> Grow your class's Hive, together.
 
 ## Stack
 
@@ -36,14 +37,19 @@ npm run dev
 src/
   components/   shared UI (shadcn primitives, layout shells, theme)
   routes/       route components, split by /t (teacher) and /s (student)
-  features/     feature-first modules added as milestones land
+  features/
+    classes/          class CRUD, roster, class code, QR
+    hive/              the vocabulary Hive: bank, contributions, ocr-import, export
+    games/             game-type selector, source-filter picker, host/play/leaderboard
+    dashboard-teacher/
+    dashboard-student/
   lib/          Supabase client, TanStack Query client, utilities
   hooks/        cross-feature hooks
 supabase/
   migrations/   SQL schema + RLS policies
-  functions/    Edge Functions
+  functions/
     _shared/enrichment/   DeepL + Wikidata wrappers (server-only, keys never client-side)
-    _shared/vocab/        shared dedup-or-create logic
+    _shared/hive/         shared dedup-or-create logic (upsertHiveWord)
 ```
 
 Teacher routes (`/t/*`) are desktop-first and auth-gated via Supabase Auth.
@@ -51,3 +57,7 @@ Student routes (`/s/*`) are mobile-first and gated by a device-bound
 Supabase Anonymous Auth session obtained via the class-code join flow at
 `/join` — no email, password, or account creation. `Class` is the top-level
 teacher-owned entity — there's no course/curriculum layer above it.
+
+Navigation is deliberately shallow: a class's Hive, Games, and Statistics
+live inside that class's own workspace, not as separate top-level nav
+items. Student bottom nav is just Home / Hive / Game.

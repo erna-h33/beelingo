@@ -7,7 +7,7 @@ export default function DashboardPage() {
     <PlaceholderPage
       icon={LayoutDashboard}
       title="Teacher Dashboard"
-      description="Vocabulary collected, top contributors, most missed words, recent games, and average accuracy."
+      description="Total Hive words, new words this week, top contributors, most missed words, game history, and average accuracy."
       milestone="M10"
     />
   )

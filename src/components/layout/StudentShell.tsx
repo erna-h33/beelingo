@@ -1,12 +1,12 @@
 import { NavLink, Outlet } from "react-router-dom"
-import { Gamepad2, Home, Sparkles } from "lucide-react"
+import { Gamepad2, Hexagon, Home } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { ThemeToggle } from "@/components/theme-toggle"
 
 const NAV_ITEMS = [
   { to: "/s", label: "Home", icon: Home, end: true },
-  { to: "/s/vocabulary", label: "Vocabulary", icon: Sparkles },
+  { to: "/s/hive", label: "Hive", icon: Hexagon },
   { to: "/s/game", label: "Game", icon: Gamepad2 },
 ]
 
