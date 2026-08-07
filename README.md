@@ -50,6 +50,7 @@ supabase/
   functions/
     _shared/enrichment/   DeepL + Wikidata wrappers (server-only, keys never client-side)
     _shared/hive/         shared dedup-or-create logic (upsertHiveWord)
+    _shared/mastery/      adaptive review engine's EMA update (pure function)
 ```
 
 Teacher routes (`/t/*`) are desktop-first and auth-gated via Supabase Auth.
