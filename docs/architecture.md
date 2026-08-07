@@ -217,6 +217,13 @@ no "Learning," "Review," or "Mastered" label ever appears to a teacher or
 student. The teacher never manages word difficulty manually; the system
 quietly adapts from classroom performance.
 
+**Weighting only ever adjusts relative probability — it never determines
+absolute inclusion or exclusion.** No word, however well-known, can be
+driven to a zero chance of appearing. Even highly mastered vocabulary
+keeps a small, ongoing chance of resurfacing, so nothing disappears from
+rotation permanently — that occasional resurfacing *is* the long-term
+reinforcement.
+
 **`mastery_score`** (`hive_words.mastery_score`, real, `[0, 1]`, default
 `0.5`) is the only state it needs — no history table.
 
@@ -241,13 +248,30 @@ ends a session, `game-end`:
    history table required.
 
 **Selection — weighted, not uniform, in `game-start`.** For the eligible
-word pool (after the chosen word-source filter), compute
-`weight = 1.15 − mastery_score` (low mastery ⇒ higher weight; a ~0.15
-floor keeps even fully-mastered words in occasional rotation) and draw
-the session's questions via roulette-wheel weighted sampling **without
+word pool (after the chosen word-source filter), every word gets a
+strictly positive selection weight:
+
+```
+weight = MASTERY_WEIGHT_FLOOR + (1 − MASTERY_WEIGHT_FLOOR) × (1 − mastery_score)
+```
+
+`MASTERY_WEIGHT_FLOOR` (recommended **0.15**, a tunable constant, not
+locked in) is what guarantees the no-permanent-exclusion rule above: at
+`mastery_score = 0` weight is `1.0` (maximum, most likely to appear); at
+`mastery_score = 1` weight is exactly `MASTERY_WEIGHT_FLOOR` — the
+*minimum* possible weight, never zero, so even a word the whole class has
+nailed every time still has a real, if small, chance of being drawn.
+Questions are drawn via roulette-wheel weighted sampling **without
 replacement**, in the Edge Function's own code — classroom-scale pools
 (tens to low hundreds of words) make this simple and fast without
 needing SQL-side weighting tricks.
+
+This floor applies specifically to mastery-based weighting. The
+teacher-chosen word-source filter (Today's Words / Entire Hive / By
+Topic / Random, below) is a separate, legitimate narrowing step applied
+*before* weighting — a word outside that filtered pool for a given
+session isn't "excluded by the adaptive engine," it's simply outside
+what the teacher asked for in that particular game.
 
 ## Games engine
 
