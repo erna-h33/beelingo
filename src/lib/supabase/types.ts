@@ -20,6 +20,15 @@ interface LanguageRefJson {
   flagEmoji: string | null
 }
 
+/** `get_my_student_session` additionally returns DeepL codes per
+ * language -- lookup_class_by_code/join_class don't, so this stays a
+ * separate shape rather than forcing fields onto LanguageRefJson that
+ * some RPCs don't actually return. */
+interface LanguageRefWithDeepLJson extends LanguageRefJson {
+  deeplSourceCode: string | null
+  deeplTargetCode: string | null
+}
+
 /** Return shape of the `lookup_class_by_code` RPC (0010) -- `null` when
  * the code doesn't match any active class. */
 export interface LookupClassResult {
@@ -46,8 +55,16 @@ export interface StudentSessionResult {
   displayName: string
   classId: string
   className: string
-  learningLanguage: LanguageRefJson
-  displayLanguage: LanguageRefJson
+  learningLanguage: LanguageRefWithDeepLJson
+  displayLanguage: LanguageRefWithDeepLJson
+}
+
+/** Return shape of the `contribute_word` RPC (0014). */
+export interface ContributeWordResult {
+  hiveWordId: string
+  word: string
+  translation: string | null
+  isNew: boolean
 }
 
 export interface Database {
@@ -210,6 +227,21 @@ export interface Database {
         }
         Relationships: []
       }
+      word_contributions: {
+        Row: {
+          id: string
+          hive_word_id: string
+          class_id: string
+          class_student_id: string
+          contributed_at: string
+          is_first_contribution: boolean
+        }
+        // Only ever written via the `contribute_word` RPC (SECURITY
+        // DEFINER, bypasses RLS) -- no direct client insert path exists.
+        Insert: never
+        Update: never
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {
@@ -224,6 +256,19 @@ export interface Database {
       get_my_student_session: {
         Args: Record<PropertyKey, never>
         Returns: StudentSessionResult | null
+      }
+      contribute_word: {
+        Args: {
+          p_word: string
+          p_translation?: string | null
+          p_word_type?: string | null
+          p_gender?: string | null
+          p_plural?: string | null
+          p_translation_source?: string
+          p_lexical_source?: string
+          p_enrichment_status?: string
+        }
+        Returns: ContributeWordResult
       }
     }
   }
