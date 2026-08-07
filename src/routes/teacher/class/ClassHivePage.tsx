@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
 import { useParams } from "react-router-dom"
-import { ImageUp, Plus, Search, Sparkles } from "lucide-react"
+import { Download, ImageUp, Plus, Search, Sparkles } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useClassQuery } from "@/features/classes/useClasses"
+import { ExportHiveDialog } from "@/features/export/components/ExportHiveDialog"
 import { useCreateHiveWordMutation, useHiveWordsQuery } from "@/features/hive/useHiveWords"
 import { HiveWordFormDialog } from "@/features/hive/components/HiveWordFormDialog"
 import { HiveWordsTable } from "@/features/hive/components/HiveWordsTable"
@@ -66,6 +67,18 @@ export default function ClassHivePage() {
           </p>
         </div>
         <div className="flex gap-2">
+          {words && words.length > 0 && classItem && (
+            <ExportHiveDialog
+              className={classItem.name}
+              words={words}
+              trigger={
+                <Button size="sm" variant="outline">
+                  <Download className="size-4" />
+                  Export
+                </Button>
+              }
+            />
+          )}
           {classItem && (
             <OcrImportDialog
               classId={classId}
