@@ -7,6 +7,8 @@ export interface LanguageRef {
   code: string
   name: string
   flag_emoji: string | null
+  deepl_source_code: string | null
+  deepl_target_code: string | null
 }
 
 export interface ClassSummary {
@@ -22,8 +24,8 @@ export interface ClassSummary {
 
 const CLASS_SELECT = `
   id, name, class_code, created_at, archived_at,
-  learning_language:languages!classes_learning_language_id_fkey(id, code, name, flag_emoji),
-  display_language:languages!classes_display_language_id_fkey(id, code, name, flag_emoji),
+  learning_language:languages!classes_learning_language_id_fkey(id, code, name, flag_emoji, deepl_source_code, deepl_target_code),
+  display_language:languages!classes_display_language_id_fkey(id, code, name, flag_emoji, deepl_source_code, deepl_target_code),
   class_students(id, is_active)
 `
 

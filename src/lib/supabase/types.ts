@@ -1,8 +1,8 @@
 /**
  * Hand-written Supabase database types, covering the tables that exist so
  * far (M2: languages, teachers, classes; M3: class_students; M4:
- * student_devices + the join-flow RPC functions). Replace/extend this by
- * running `supabase gen types typescript --db-url ...`
+ * student_devices + the join-flow RPC functions; M5: hive_words).
+ * Replace/extend this by running `supabase gen types typescript --db-url ...`
  * once Docker (or a CI runner) is available to run it -- it needs a
  * container runtime that isn't present in this dev environment.
  *
@@ -142,6 +142,72 @@ export interface Database {
         // bypasses RLS) -- no direct client insert/update path exists.
         Insert: never
         Update: never
+        Relationships: []
+      }
+      hive_words: {
+        Row: {
+          id: string
+          class_id: string
+          word: string
+          translation: string | null
+          word_type: string | null
+          gender: string | null
+          plural: string | null
+          practice_sentence: string | null
+          teacher_notes: string | null
+          teacher_audio_path: string | null
+          topic: string | null
+          source: "student" | "teacher" | "ocr"
+          added_by_class_student_id: string | null
+          verified: boolean
+          verified_at: string | null
+          mastery_score: number
+          translation_source: "deepl" | "manual" | "none"
+          translated_at: string | null
+          lexical_source: "wikidata" | "none"
+          lexical_fetched_at: string | null
+          enrichment_status: "pending" | "success" | "partial" | "failed"
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          class_id: string
+          word: string
+          translation?: string | null
+          word_type?: string | null
+          gender?: string | null
+          plural?: string | null
+          practice_sentence?: string | null
+          teacher_notes?: string | null
+          topic?: string | null
+          source: "student" | "teacher" | "ocr"
+          added_by_class_student_id?: string | null
+          verified?: boolean
+          verified_at?: string | null
+          translation_source?: "deepl" | "manual" | "none"
+          translated_at?: string | null
+          lexical_source?: "wikidata" | "none"
+          lexical_fetched_at?: string | null
+          enrichment_status?: "pending" | "success" | "partial" | "failed"
+        }
+        Update: {
+          word?: string
+          translation?: string | null
+          word_type?: string | null
+          gender?: string | null
+          plural?: string | null
+          practice_sentence?: string | null
+          teacher_notes?: string | null
+          teacher_audio_path?: string | null
+          topic?: string | null
+          verified?: boolean
+          verified_at?: string | null
+          translation_source?: "deepl" | "manual" | "none"
+          translated_at?: string | null
+          lexical_source?: "wikidata" | "none"
+          lexical_fetched_at?: string | null
+          enrichment_status?: "pending" | "success" | "partial" | "failed"
+        }
         Relationships: []
       }
     }
