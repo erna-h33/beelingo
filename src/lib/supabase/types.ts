@@ -105,6 +105,31 @@ export interface GameEndSessionResult {
   status: "completed"
 }
 
+/** One row of the `class_word_stats` RPC (0023) -- cumulative miss-rate
+ * across every game the class has ever played. Deliberately never
+ * includes mastery_score: this is a different, independently-computed
+ * signal, kept separate so the internal adaptive-engine score stays
+ * fully internal even here. */
+export interface ClassWordStat {
+  hiveWordId: string
+  word: string
+  translation: string | null
+  topic: string | null
+  attempts: number
+  correct: number
+  missRate: number
+}
+
+/** One row of the `class_student_stats` RPC (0023). */
+export interface ClassStudentStat {
+  classStudentId: string
+  displayName: string
+  gamesPlayed: number
+  totalScore: number
+  correctCount: number
+  incorrectCount: number
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -409,6 +434,14 @@ export interface Database {
       game_end_session: {
         Args: { p_session_id: string }
         Returns: GameEndSessionResult
+      }
+      class_word_stats: {
+        Args: { p_class_id: string; p_limit?: number }
+        Returns: ClassWordStat[]
+      }
+      class_student_stats: {
+        Args: { p_class_id: string }
+        Returns: ClassStudentStat[]
       }
     }
   }
