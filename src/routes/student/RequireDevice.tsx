@@ -1,13 +1,26 @@
-import { Outlet } from "react-router-dom"
+import { Navigate, Outlet } from "react-router-dom"
+
+import { useStudentSessionQuery } from "@/features/studentSession/useStudentSession"
+import { RouteLoading } from "@/components/route-loading"
 
 /**
- * Guards all /s/* routes (except /join) behind a recognized device
- * (a persisted Supabase anonymous session linked to a class_students row).
- *
- * Stubbed as a pass-through for M1 (no Supabase project wired up yet).
- * M4 replaces this with a real check (redirect to /join when no valid
- * device session exists) once the student join flow is implemented.
+ * Guards all /s/* routes behind a recognized device (a persisted Supabase
+ * anonymous session linked to a class_students row via student_devices).
+ * Redirects to /join when no valid device session exists -- whether
+ * because this device has never joined, or because its roster entry was
+ * deactivated/the class archived since (get_my_student_session excludes
+ * those, so it resolves to "unrecognized" the same as never having joined).
  */
 export function RequireDevice() {
+  const { data: session, isLoading } = useStudentSessionQuery()
+
+  if (isLoading) {
+    return <RouteLoading />
+  }
+
+  if (!session) {
+    return <Navigate to="/join" replace />
+  }
+
   return <Outlet />
 }

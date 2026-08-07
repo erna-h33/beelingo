@@ -1,7 +1,8 @@
 /**
  * Hand-written Supabase database types, covering the tables that exist so
- * far (M2: languages, teachers, classes; M3: class_students). Replace/
- * extend this by running `supabase gen types typescript --db-url ...`
+ * far (M2: languages, teachers, classes; M3: class_students; M4:
+ * student_devices + the join-flow RPC functions). Replace/extend this by
+ * running `supabase gen types typescript --db-url ...`
  * once Docker (or a CI runner) is available to run it -- it needs a
  * container runtime that isn't present in this dev environment.
  *
@@ -12,6 +13,43 @@
  * PostgREST's embedded-relationship typing (embedded selects are cast
  * manually where used, e.g. `ClassSummary` in features/classes/useClasses.ts).
  */
+
+interface LanguageRefJson {
+  code: string
+  name: string
+  flagEmoji: string | null
+}
+
+/** Return shape of the `lookup_class_by_code` RPC (0010) -- `null` when
+ * the code doesn't match any active class. */
+export interface LookupClassResult {
+  class: {
+    id: string
+    name: string
+    learningLanguage: LanguageRefJson
+    displayLanguage: LanguageRefJson
+  }
+  roster: { id: string; displayName: string }[]
+}
+
+/** Return shape of the `join_class` RPC (0010). */
+export interface JoinClassResult {
+  classStudentId: string
+  displayName: string
+  classId: string
+}
+
+/** Return shape of the `get_my_student_session` RPC (0010/0012) -- `null`
+ * when the caller's device isn't linked to any active roster entry. */
+export interface StudentSessionResult {
+  classStudentId: string
+  displayName: string
+  classId: string
+  className: string
+  learningLanguage: LanguageRefJson
+  displayLanguage: LanguageRefJson
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -92,8 +130,35 @@ export interface Database {
         }
         Relationships: []
       }
+      student_devices: {
+        Row: {
+          id: string
+          class_student_id: string
+          auth_user_id: string
+          last_seen_at: string
+          created_at: string
+        }
+        // Only ever written via the `join_class` RPC (SECURITY DEFINER,
+        // bypasses RLS) -- no direct client insert/update path exists.
+        Insert: never
+        Update: never
+        Relationships: []
+      }
     }
     Views: Record<string, never>
-    Functions: Record<string, never>
+    Functions: {
+      lookup_class_by_code: {
+        Args: { p_class_code: string }
+        Returns: LookupClassResult | null
+      }
+      join_class: {
+        Args: { p_class_student_id: string }
+        Returns: JoinClassResult
+      }
+      get_my_student_session: {
+        Args: Record<PropertyKey, never>
+        Returns: StudentSessionResult | null
+      }
+    }
   }
 }

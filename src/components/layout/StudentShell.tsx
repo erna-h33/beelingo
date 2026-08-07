@@ -3,6 +3,7 @@ import { Gamepad2, Hexagon, Home } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { useStudentSessionQuery } from "@/features/studentSession/useStudentSession"
 
 const NAV_ITEMS = [
   { to: "/s", label: "Home", icon: Home, end: true },
@@ -16,10 +17,19 @@ const NAV_ITEMS = [
  * guarding (RequireDevice) wraps this shell's parent route.
  */
 export function StudentShell() {
+  const { data: session } = useStudentSessionQuery()
+
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
-        <span className="text-base font-semibold tracking-tight">Beelingo</span>
+        <div className="flex flex-col leading-tight">
+          <span className="text-base font-semibold tracking-tight">Beelingo</span>
+          {session && (
+            <span className="text-xs text-muted-foreground">
+              {session.displayName} · {session.className}
+            </span>
+          )}
+        </div>
         <ThemeToggle />
       </header>
 

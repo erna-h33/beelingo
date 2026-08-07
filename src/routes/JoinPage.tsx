@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from "react"
-import { Link, useSearchParams } from "react-router-dom"
-import { ArrowRight, GraduationCap } from "lucide-react"
+import { useEffect, useRef, useState, type FormEvent } from "react"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
+import { ArrowLeft, ArrowRight, GraduationCap, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -14,21 +14,62 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { useStudentSessionQuery } from "@/features/studentSession/useStudentSession"
+import { useJoinClassMutation, useLookupClassByCode } from "@/features/studentSession/useJoinFlow"
+import type { LookupClassResult } from "@/lib/supabase/types"
 
 /**
- * Visual shell for the student join flow (enter class code -> pick your
- * name). Real class-code lookup + Anonymous Auth session issuance lands
- * in M4 — this milestone only wires up the UI shape and layout.
+ * Student join flow: enter class code -> pick your name -> recognized on
+ * this device from then on. No email, no password, no account creation.
  */
 export default function JoinPage() {
   const [searchParams] = useSearchParams()
-  const [code, setCode] = useState(() => (searchParams.get("code") ?? "").toUpperCase().slice(0, 6))
+  const navigate = useNavigate()
+  const { data: existingSession, isLoading: sessionLoading } = useStudentSessionQuery()
 
-  function handleSubmit(event: FormEvent) {
-    event.preventDefault()
-    toast.info("Class join is coming in M4", {
-      description: "This screen will look up your class and let you pick your name.",
-    })
+  const [code, setCode] = useState(() => (searchParams.get("code") ?? "").toUpperCase().slice(0, 6))
+  const [found, setFound] = useState<LookupClassResult | null>(null)
+  const lookupClass = useLookupClassByCode()
+  const joinClass = useJoinClassMutation()
+  const autoLookedUp = useRef(false)
+
+  // Already recognized on this device -- skip straight to the dashboard.
+  useEffect(() => {
+    if (!sessionLoading && existingSession) {
+      navigate("/s", { replace: true })
+    }
+  }, [sessionLoading, existingSession, navigate])
+
+  async function handleLookup(event?: FormEvent) {
+    event?.preventDefault()
+    try {
+      const result = await lookupClass.mutateAsync(code)
+      setFound(result)
+    } catch (error) {
+      toast.error("Class not found", {
+        description: error instanceof Error ? error.message : "Double-check the code and try again.",
+      })
+    }
+  }
+
+  // Scanning the teacher's QR (?code=XXXXXX) jumps straight to name-picking.
+  useEffect(() => {
+    if (!autoLookedUp.current && code.length === 6 && !sessionLoading && !existingSession) {
+      autoLookedUp.current = true
+      handleLookup()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code, sessionLoading, existingSession])
+
+  async function handlePickName(classStudentId: string) {
+    try {
+      await joinClass.mutateAsync(classStudentId)
+      navigate("/s", { replace: true })
+    } catch (error) {
+      toast.error("Couldn't join the class", {
+        description: error instanceof Error ? error.message : undefined,
+      })
+    }
   }
 
   return (
@@ -42,33 +83,86 @@ export default function JoinPage() {
         <span className="text-xl font-semibold tracking-tight">Beelingo</span>
       </div>
 
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>Join your class</CardTitle>
-          <CardDescription>Enter the class code your teacher gave you.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="class-code">Class code</Label>
-              <Input
-                id="class-code"
-                placeholder="A7XK92"
-                autoComplete="off"
-                autoCapitalize="characters"
-                maxLength={6}
-                className="text-center text-lg font-semibold tracking-[0.3em] uppercase"
-                value={code}
-                onChange={(event) => setCode(event.target.value.toUpperCase())}
-              />
-            </div>
-            <Button type="submit" size="lg" disabled={code.length < 4}>
-              Continue
-              <ArrowRight className="size-4" />
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+      {!found ? (
+        <Card className="w-full max-w-sm">
+          <CardHeader>
+            <CardTitle>Join your class</CardTitle>
+            <CardDescription>Enter the class code your teacher gave you.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form className="flex flex-col gap-4" onSubmit={handleLookup}>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="class-code">Class code</Label>
+                <Input
+                  id="class-code"
+                  placeholder="A7XK92"
+                  autoComplete="off"
+                  autoCapitalize="characters"
+                  maxLength={6}
+                  className="text-center text-lg font-semibold tracking-[0.3em] uppercase"
+                  value={code}
+                  onChange={(event) => setCode(event.target.value.toUpperCase())}
+                />
+              </div>
+              <Button type="submit" size="lg" disabled={code.length < 4 || lookupClass.isPending}>
+                {lookupClass.isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <>
+                    Continue
+                    <ArrowRight className="size-4" />
+                  </>
+                )}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="w-full max-w-sm">
+          <CardHeader>
+            <button
+              type="button"
+              onClick={() => setFound(null)}
+              className="mb-1 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="size-3.5" />
+              Different code
+            </button>
+            <CardTitle>{found.class.name}</CardTitle>
+            <CardDescription>
+              {found.class.learningLanguage.flagEmoji} {found.class.learningLanguage.name}
+              <span className="mx-1.5 text-muted-foreground/60">→</span>
+              {found.class.displayLanguage.flagEmoji} {found.class.displayLanguage.name}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-3 text-sm font-medium">Which one are you?</p>
+            {found.roster.length === 0 ? (
+              <p className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
+                Your teacher hasn't added any students to this class yet.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {found.roster.map((student) => (
+                  <Button
+                    key={student.id}
+                    variant="outline"
+                    size="lg"
+                    className="justify-start text-base"
+                    disabled={joinClass.isPending}
+                    onClick={() => handlePickName(student.id)}
+                  >
+                    {joinClass.isPending && joinClass.variables === student.id && (
+                      <Loader2 className="size-4 animate-spin" />
+                    )}
+                    {student.displayName}
+                  </Button>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
         Are you a teacher?
