@@ -3,7 +3,7 @@ import { PartyPopper, Users } from "lucide-react"
 
 import { Skeleton } from "@/components/ui/skeleton"
 import { useStudentsQuery } from "@/features/classes/students/useStudents"
-import { GAME_TYPE_LABEL } from "@/features/games/constants"
+import { GAME_TYPE_LABEL, isSelfPacedGameType } from "@/features/games/constants"
 import { BeeHiveRecallResults } from "@/features/games/components/BeeHiveRecallResults"
 import { Leaderboard } from "@/features/games/components/Leaderboard"
 import { useJoinGameSessionMutation } from "@/features/games/useGameActions"
@@ -44,7 +44,10 @@ export function PlayerShell({ classId, classStudentId }: PlayerShellProps) {
   const { data: session } = useGameSessionQuery(sessionId ?? undefined)
   const { data: participants } = useGameParticipantsQuery(sessionId ?? undefined)
   const { data: students } = useStudentsQuery(classId)
-  const { data: questions } = useGameQuestionsQuery(sessionId ?? undefined, session?.current_question_index)
+  const {
+    data: questions,
+    refetch: refetchQuestions,
+  } = useGameQuestionsQuery(sessionId ?? undefined, session?.current_question_index)
 
   const joinSession = useJoinGameSessionMutation()
   const [participantId, setParticipantId] = useState<string | null>(null)
@@ -137,7 +140,50 @@ export function PlayerShell({ classId, classStudentId }: PlayerShellProps) {
     return <FlashcardsPlayer sessionId={sessionId} currentQuestionIndex={session.current_question_index} />
   }
 
-  const currentQuestion = questions?.find((q) => q.sequence_index === session.current_question_index)
+  const selfPaced = isSelfPacedGameType(session.game_type)
+  const own = participants?.find((p) => p.class_student_id === classStudentId)
+  const totalQuestions = session.settings?.totalQuestions
+  const ownAnsweredCount = own ? own.correct_count + own.incorrect_count : 0
+
+  // Self-paced: once this student has answered every question the
+  // session actually created, there's nothing left for them to see
+  // (game_questions only ever holds totalQuestions rows), regardless
+  // of whether the session itself, or any other student, is done yet.
+  // ownAnsweredCount comes straight from game_session_participants (set
+  // by game_submit_answer), so this survives a page reload correctly --
+  // unlike deriving it from local component state.
+  if (selfPaced && totalQuestions !== undefined && ownAnsweredCount >= totalQuestions) {
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed py-12 text-center">
+          <PartyPopper className="size-8 text-muted-foreground" />
+          <div>
+            <p className="font-medium">You've finished!</p>
+            <p className="text-sm text-muted-foreground">
+              {own && `You scored ${own.score} points. `}Waiting for everyone else to catch up…
+            </p>
+          </div>
+        </div>
+        <Leaderboard
+          participants={participants ?? []}
+          namesById={namesById}
+          highlightClassStudentId={classStudentId}
+          showTeams={session.game_type === "team_battle"}
+        />
+      </div>
+    )
+  }
+
+  // Self-paced games reveal questions strictly in order via RLS
+  // (migration 0031): the array's length always equals however many
+  // this student has answered plus the one newly-revealed unanswered
+  // question, so the last entry is always the current one -- no local
+  // "answered so far" tracking needed, and it's correct on a fresh
+  // page load too. Host-paced games still key off the shared
+  // current_question_index.
+  const currentQuestion = selfPaced
+    ? questions?.[questions.length - 1]
+    : questions?.find((q) => q.sequence_index === session.current_question_index)
   if (!currentQuestion) {
     return (
       <div className="flex flex-col gap-3">
@@ -145,6 +191,13 @@ export function PlayerShell({ classId, classStudentId }: PlayerShellProps) {
       </div>
     )
   }
+
+  // Self-paced only: after a correct/incorrect result is shown, pull
+  // the next question in immediately rather than waiting on the
+  // teacher. The query key doesn't change (current_question_index
+  // stays put for these game types), so a manual refetch is what
+  // actually picks up the row RLS just revealed.
+  const handleAnswered = selfPaced ? () => void refetchQuestions() : undefined
 
   const payload = currentQuestion.question_payload as unknown as QuestionPayload
 
@@ -167,6 +220,7 @@ export function PlayerShell({ classId, classStudentId }: PlayerShellProps) {
           promptLabel="Type the word for this"
           prompt={payload.prompt}
           placeholder="Type the word"
+          onAnswered={handleAnswered}
         />
       )
     case "fill_in_blank":
@@ -177,6 +231,7 @@ export function PlayerShell({ classId, classStudentId }: PlayerShellProps) {
           promptLabel="Fill in the blank"
           prompt={payload.sentence}
           placeholder="Type the missing word"
+          onAnswered={handleAnswered}
         />
       )
     case "reverse_translation":
@@ -187,6 +242,7 @@ export function PlayerShell({ classId, classStudentId }: PlayerShellProps) {
           promptLabel="Which word means this?"
           prompt={payload.prompt}
           choices={payload.choices}
+          onAnswered={handleAnswered}
         />
       )
     case "speed_translation":
@@ -198,6 +254,7 @@ export function PlayerShell({ classId, classStudentId }: PlayerShellProps) {
           promptLabel="Translate this word"
           prompt={payload.prompt}
           choices={payload.choices}
+          onAnswered={handleAnswered}
         />
       )
     case "beehive_recall":

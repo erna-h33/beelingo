@@ -13,15 +13,33 @@ export const GAME_TYPE_LABEL: Record<GameType, string> = {
 }
 
 export const GAME_TYPE_DESCRIPTION: Record<GameType, string> = {
-  speed_translation: "See the word, pick the right translation.",
-  reverse_translation: "See the translation, pick the right word.",
-  typing_challenge: "See the translation, type the word from memory.",
-  fill_in_blank: "Fill in the missing word in a practice sentence.",
-  team_battle: "Speed Translation, scored by team.",
+  speed_translation: "See the word, pick the right translation. Race through at your own pace.",
+  reverse_translation: "See the translation, pick the right word. Race through at your own pace.",
+  typing_challenge: "See the translation, type the word from memory. Race through at your own pace.",
+  fill_in_blank: "Fill in the missing word in a practice sentence. Race through at your own pace.",
+  team_battle: "Speed Translation, scored by team. Race through at your own pace.",
   matching: "Match every word to its translation.",
   memory_challenge: "Flip cards to find matching pairs.",
   flashcards: "Self-paced review -- flip to reveal the translation.",
   beehive_recall: "Study a group of words, then type everything you remember.",
+}
+
+/** These five race the student through their own question set --
+ * answering one immediately reveals the next, independent of
+ * classmates -- rather than the host pacing the whole class through
+ * one shared question at a time (see migration 0030's RLS comment).
+ * Matching/Memory Challenge/Flashcards/BeeHive Recall are already
+ * single-question or self-paced by nature and aren't in this list. */
+export const SELF_PACED_GAME_TYPES: GameType[] = [
+  "speed_translation",
+  "reverse_translation",
+  "typing_challenge",
+  "fill_in_blank",
+  "team_battle",
+]
+
+export function isSelfPacedGameType(gameType: GameType): boolean {
+  return SELF_PACED_GAME_TYPES.includes(gameType)
 }
 
 export type RecallDifficulty = "easy" | "medium" | "hard" | "expert"

@@ -10,6 +10,11 @@ interface MultipleChoicePlayerProps {
   prompt: string
   promptLabel: string
   choices: string[]
+  /** Self-paced games only: called ~900ms after a correct/incorrect
+   * result is shown, once per question, so the student sees feedback
+   * flash before the next question replaces this one. Omitted for any
+   * future host-paced game type, which wouldn't want this. */
+  onAnswered?: () => void
 }
 
 /** Shared by speed_translation, reverse_translation, and team_battle --
@@ -22,6 +27,7 @@ export function MultipleChoicePlayer({
   prompt,
   promptLabel,
   choices,
+  onAnswered,
 }: MultipleChoicePlayerProps) {
   const submitAnswer = useSubmitAnswerMutation()
   const [selected, setSelected] = useState<string | null>(null)
@@ -34,6 +40,15 @@ export function MultipleChoicePlayer({
     setResult(null)
     setStartedAt(Date.now())
   }, [gameQuestionId])
+
+  // Brief pause on the feedback state before advancing -- its own
+  // effect (rather than a setTimeout inside handleChoose) so it's
+  // properly cancelled if the question changes out from under it.
+  useEffect(() => {
+    if (!result || !onAnswered) return
+    const t = setTimeout(() => onAnswered(), 900)
+    return () => clearTimeout(t)
+  }, [result, onAnswered])
 
   async function handleChoose(choice: string) {
     if (selected) return
@@ -87,7 +102,7 @@ export function MultipleChoicePlayer({
 
       {result && (
         <p className={cn("text-center text-sm font-medium", result.isCorrect ? "text-green-600" : "text-red-600")}>
-          {result.isCorrect ? "Correct!" : "Not quite"} -- waiting for the next question…
+          {result.isCorrect ? "Correct!" : "Not quite"} {onAnswered ? "-- next question…" : "-- waiting for the next question…"}
         </p>
       )}
     </div>

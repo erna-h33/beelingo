@@ -1,11 +1,12 @@
-import { useMemo } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import { PartyPopper, Users } from "lucide-react"
 
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useStudentsQuery } from "@/features/classes/students/useStudents"
-import { GAME_TYPE_LABEL } from "@/features/games/constants"
+import { GAME_TYPE_LABEL, isSelfPacedGameType } from "@/features/games/constants"
 import { BeeHiveRecallResults } from "@/features/games/components/BeeHiveRecallResults"
 import { Leaderboard } from "@/features/games/components/Leaderboard"
 import { useAnsweredCountQuery, useGameAnswersForQuestionQuery } from "@/features/games/useGameAnswers"
@@ -15,7 +16,7 @@ import {
   useStartGameSessionMutation,
 } from "@/features/games/useGameActions"
 import { useGameQuestionsQuery, type QuestionPayload } from "@/features/games/useGameQuestions"
-import { useGameParticipantsQuery, useGameSessionQuery } from "@/features/games/useGameSession"
+import { type GameParticipant, useGameParticipantsQuery, useGameSessionQuery } from "@/features/games/useGameSession"
 import { useWaitingRoomPresence } from "@/features/games/useWaitingRoomPresence"
 
 interface HostConsoleProps {
@@ -45,6 +46,63 @@ export function HostConsole({ classId, sessionId, onReset }: HostConsoleProps) {
     () => (questions && questions.length > 0 ? Math.max(...questions.map((q) => q.sequence_index)) + 1 : 0),
     [questions],
   )
+
+  const selfPaced = session ? isSelfPacedGameType(session.game_type) : false
+
+  // Every participant has answered every question that exists for this
+  // session -- checked directly against correct_count + incorrect_count
+  // (server-truth, set by game_submit_answer), not any client-guessed
+  // signal.
+  const allSelfPacedFinished =
+    selfPaced &&
+    totalQuestions > 0 &&
+    (participants?.length ?? 0) > 0 &&
+    (participants ?? []).every((p) => p.correct_count + p.incorrect_count >= totalQuestions)
+
+  // Tracks when the class first became "all finished," so the End Game
+  // button can flash for the first 15s and the game can auto-end at the
+  // 30s mark if the teacher hasn't ended it manually. Resets whenever
+  // the session leaves "active" (fresh game, or already ended).
+  const [allFinishedSince, setAllFinishedSince] = useState<number | null>(null)
+  useEffect(() => {
+    if (session?.status !== "active" || !allSelfPacedFinished) {
+      setAllFinishedSince(null)
+      return
+    }
+    setAllFinishedSince((prev) => prev ?? Date.now())
+  }, [allSelfPacedFinished, session?.status])
+
+  // A ref rather than an effect dependency, so the mutation object's
+  // identity changing on every render doesn't reset/restart the pending
+  // auto-end timeout below.
+  const endSessionRef = useRef(endSession.mutateAsync)
+  endSessionRef.current = endSession.mutateAsync
+
+  useEffect(() => {
+    if (!allFinishedSince) return
+    const remaining = 30_000 - (Date.now() - allFinishedSince)
+    if (remaining <= 0) {
+      void endSessionRef.current()
+      return
+    }
+    const timeout = setTimeout(() => void endSessionRef.current(), remaining)
+    return () => clearTimeout(timeout)
+  }, [allFinishedSince])
+
+  // Purely a 1s display ticker for the flash/countdown UI below -- the
+  // actual auto-end timeout above doesn't depend on it.
+  const [nowTick, setNowTick] = useState(() => Date.now())
+  useEffect(() => {
+    if (!allFinishedSince) return
+    const id = setInterval(() => setNowTick(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [allFinishedSince])
+
+  const elapsedSinceFinished = allFinishedSince ? nowTick - allFinishedSince : 0
+  const isEndGameFlashing = allFinishedSince !== null && elapsedSinceFinished < 15_000
+  const autoEndCountdown =
+    allFinishedSince !== null ? Math.max(0, Math.ceil((30_000 - elapsedSinceFinished) / 1000)) : null
+
   const currentQuestion = questions?.find((q) => q.sequence_index === session?.current_question_index)
   const isLast = (session?.current_question_index ?? 0) >= totalQuestions - 1
   const { data: answeredCount } = useAnsweredCountQuery(currentQuestion?.id)
@@ -97,9 +155,22 @@ export function HostConsole({ classId, sessionId, onReset }: HostConsoleProps) {
           <p className="text-sm text-muted-foreground capitalize">{session.status}</p>
         </div>
         {session.status !== "completed" && (
-          <Button variant="outline" size="sm" onClick={handleEnd} disabled={endSession.isPending}>
-            End game
-          </Button>
+          <div className="flex items-center gap-2">
+            {autoEndCountdown !== null && (
+              <span className="text-xs text-muted-foreground">
+                Everyone's done -- auto-ending in {autoEndCountdown}s
+              </span>
+            )}
+            <Button
+              variant={isEndGameFlashing ? "destructive" : "outline"}
+              size="sm"
+              onClick={handleEnd}
+              disabled={endSession.isPending}
+              className={cn(isEndGameFlashing && "animate-pulse")}
+            >
+              End game
+            </Button>
+          </div>
         )}
       </div>
 
@@ -133,6 +204,8 @@ export function HostConsole({ classId, sessionId, onReset }: HostConsoleProps) {
               Self-paced review -- students are flipping through the deck on their own. End the game whenever
               you're ready to move on.
             </p>
+          ) : selfPaced ? (
+            <SelfPacedProgress participants={participants ?? []} namesById={namesById} totalQuestions={totalQuestions} />
           ) : (
             <>
               <div className="flex items-center justify-between text-sm">
@@ -180,6 +253,52 @@ export function HostConsole({ classId, sessionId, onReset }: HostConsoleProps) {
           </Button>
         </div>
       )}
+    </div>
+  )
+}
+
+/** Live per-student progress for self-paced game types, replacing the
+ * shared "Question X of Y" / Next question UI -- there's no single
+ * current question to advance since each student reveals their own via
+ * RLS (migration 0031) the moment they answer. Derived entirely from
+ * game_session_participants' correct_count/incorrect_count, already
+ * fetched and kept live by useGameParticipantsQuery -- no extra query. */
+function SelfPacedProgress({
+  participants,
+  namesById,
+  totalQuestions,
+}: {
+  participants: GameParticipant[]
+  namesById: Record<string, string>
+  totalQuestions: number
+}) {
+  const finishedCount = participants.filter((p) => p.correct_count + p.incorrect_count >= totalQuestions).length
+
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border px-4 py-3">
+      <div className="flex items-center justify-between text-sm">
+        <span className="font-medium">Live progress</span>
+        <span className="text-muted-foreground">
+          {finishedCount} / {participants.length} finished
+        </span>
+      </div>
+      <ul className="flex flex-col gap-1.5">
+        {participants.map((p) => {
+          const answered = Math.min(p.correct_count + p.incorrect_count, totalQuestions)
+          const done = answered >= totalQuestions
+          return (
+            <li key={p.id} className="flex items-center justify-between text-sm">
+              <span className={cn(done && "text-muted-foreground")}>
+                {namesById[p.class_student_id] ?? "Student"}
+                {done && " ✓"}
+              </span>
+              <span className="text-muted-foreground">
+                {answered} / {totalQuestions}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
     </div>
   )
 }

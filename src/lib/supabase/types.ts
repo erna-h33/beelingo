@@ -366,6 +366,11 @@ export interface Database {
             teamCount?: number
             displaySeconds?: number
             answerSeconds?: number
+            /** The actual number of questions created (can be less than
+             * questionCount if the Hive pool was smaller) -- set by
+             * game_create_session (0030), used by self-paced students'
+             * clients to know when they've reached the end. */
+            totalQuestions?: number
           }
           current_question_index: number
           started_at: string | null
