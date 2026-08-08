@@ -6,14 +6,15 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useStudentsQuery } from "@/features/classes/students/useStudents"
 import { GAME_TYPE_LABEL } from "@/features/games/constants"
+import { BeeHiveRecallResults } from "@/features/games/components/BeeHiveRecallResults"
 import { Leaderboard } from "@/features/games/components/Leaderboard"
-import { useAnsweredCountQuery } from "@/features/games/useGameAnswers"
+import { useAnsweredCountQuery, useGameAnswersForQuestionQuery } from "@/features/games/useGameAnswers"
 import {
   useAdvanceQuestionMutation,
   useEndGameSessionMutation,
   useStartGameSessionMutation,
 } from "@/features/games/useGameActions"
-import { useGameQuestionsQuery } from "@/features/games/useGameQuestions"
+import { useGameQuestionsQuery, type QuestionPayload } from "@/features/games/useGameQuestions"
 import { useGameParticipantsQuery, useGameSessionQuery } from "@/features/games/useGameSession"
 import { useWaitingRoomPresence } from "@/features/games/useWaitingRoomPresence"
 
@@ -49,6 +50,11 @@ export function HostConsole({ classId, sessionId, onReset }: HostConsoleProps) {
   const { data: answeredCount } = useAnsweredCountQuery(currentQuestion?.id)
 
   const isFlashcards = session?.game_type === "flashcards"
+  const isRecall = session?.game_type === "beehive_recall"
+  const { data: recallAnswers } = useGameAnswersForQuestionQuery(isRecall ? currentQuestion?.id : undefined)
+  const recallPayload = isRecall
+    ? (currentQuestion?.question_payload as unknown as Extract<QuestionPayload, { type: "beehive_recall" }> | undefined)
+    : undefined
 
   if (sessionLoading || !session) {
     return (
@@ -161,6 +167,9 @@ export function HostConsole({ classId, sessionId, onReset }: HostConsoleProps) {
             <PartyPopper className="size-8 text-muted-foreground" />
             <p className="font-medium">Game over!</p>
           </div>
+          {isRecall && recallPayload && (
+            <BeeHiveRecallResults pairs={recallPayload.pairs} answers={recallAnswers ?? []} />
+          )}
           <Leaderboard
             participants={participants ?? []}
             namesById={namesById}

@@ -76,6 +76,7 @@ export type GameType =
   | "memory_challenge"
   | "fill_in_blank"
   | "team_battle"
+  | "beehive_recall"
 
 export type WordSetFilter = "today" | "random" | "entire_hive" | "by_topic"
 
@@ -359,7 +360,13 @@ export interface Database {
           game_type: GameType
           word_set_filter: WordSetFilter
           status: "waiting" | "active" | "completed" | "cancelled"
-          settings: { questionCount?: number; topic?: string; teamCount?: number }
+          settings: {
+            questionCount?: number
+            topic?: string
+            teamCount?: number
+            displaySeconds?: number
+            answerSeconds?: number
+          }
           current_question_index: number
           started_at: string | null
           ended_at: string | null

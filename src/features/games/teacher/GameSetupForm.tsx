@@ -15,8 +15,12 @@ import type { GameType, WordSetFilter } from "@/lib/supabase/types"
 import {
   GAME_TYPE_DESCRIPTION,
   GAME_TYPE_LABEL,
+  RECALL_DEFAULT_ANSWER_SECONDS,
+  RECALL_DIFFICULTY_LABEL,
+  RECALL_DIFFICULTY_PRESETS,
   WORD_SET_FILTER_DESCRIPTION,
   WORD_SET_FILTER_LABEL,
+  type RecallDifficulty,
 } from "@/features/games/constants"
 import { useCreateGameSessionMutation } from "@/features/games/useGameActions"
 import { useHiveWordsQuery } from "@/features/hive/useHiveWords"
@@ -30,7 +34,10 @@ const GAME_TYPES: GameType[] = [
   "matching",
   "memory_challenge",
   "flashcards",
+  "beehive_recall",
 ]
+
+const RECALL_DIFFICULTIES: RecallDifficulty[] = ["easy", "medium", "hard", "expert"]
 
 const WORD_SET_FILTERS: WordSetFilter[] = ["today", "random", "entire_hive", "by_topic"]
 
@@ -51,6 +58,10 @@ export function GameSetupForm({ classId, onCreated }: GameSetupFormProps) {
   const [topic, setTopic] = useState("")
   const [questionCount, setQuestionCount] = useState(8)
   const [teamCount, setTeamCount] = useState(2)
+  const [recallDifficulty, setRecallDifficulty] = useState<RecallDifficulty>("medium")
+  const [recallAnswerSeconds, setRecallAnswerSeconds] = useState(RECALL_DEFAULT_ANSWER_SECONDS)
+
+  const isRecall = gameType === "beehive_recall"
 
   const topics = useMemo(
     () => [...new Set((words ?? []).map((w) => w.topic).filter((t): t is string => Boolean(t)))].sort(),
@@ -61,13 +72,16 @@ export function GameSetupForm({ classId, onCreated }: GameSetupFormProps) {
 
   async function handleStart() {
     try {
+      const recallPreset = RECALL_DIFFICULTY_PRESETS[recallDifficulty]
       const result = await createSession.mutateAsync({
         classId,
         gameType,
         wordSetFilter,
-        questionCount,
+        questionCount: isRecall ? recallPreset.wordCount : questionCount,
         topic: wordSetFilter === "by_topic" ? topic : undefined,
         teamCount: gameType === "team_battle" ? teamCount : undefined,
+        displaySeconds: isRecall ? recallPreset.displaySeconds : undefined,
+        answerSeconds: isRecall ? recallAnswerSeconds : undefined,
       })
       onCreated(result.sessionId)
     } catch (error) {
@@ -139,17 +153,54 @@ export function GameSetupForm({ classId, onCreated }: GameSetupFormProps) {
           </div>
         )}
 
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="question-count">Number of words</Label>
-          <Input
-            id="question-count"
-            type="number"
-            min={2}
-            max={30}
-            value={questionCount}
-            onChange={(e) => setQuestionCount(Number(e.target.value) || 2)}
-          />
-        </div>
+        {!isRecall && (
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="question-count">Number of words</Label>
+            <Input
+              id="question-count"
+              type="number"
+              min={2}
+              max={30}
+              value={questionCount}
+              onChange={(e) => setQuestionCount(Number(e.target.value) || 2)}
+            />
+          </div>
+        )}
+
+        {isRecall && (
+          <div className="flex flex-col gap-2">
+            <Label>Difficulty</Label>
+            <Select value={recallDifficulty} onValueChange={(v) => setRecallDifficulty(v as RecallDifficulty)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {RECALL_DIFFICULTIES.map((d) => {
+                  const preset = RECALL_DIFFICULTY_PRESETS[d]
+                  return (
+                    <SelectItem key={d} value={d}>
+                      {RECALL_DIFFICULTY_LABEL[d]} -- {preset.wordCount} words, {preset.displaySeconds}s
+                    </SelectItem>
+                  )
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {isRecall && (
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="recall-answer-seconds">Answer time (seconds)</Label>
+            <Input
+              id="recall-answer-seconds"
+              type="number"
+              min={10}
+              max={120}
+              value={recallAnswerSeconds}
+              onChange={(e) => setRecallAnswerSeconds(Number(e.target.value) || RECALL_DEFAULT_ANSWER_SECONDS)}
+            />
+          </div>
+        )}
 
         {gameType === "team_battle" && (
           <div className="flex flex-col gap-2">

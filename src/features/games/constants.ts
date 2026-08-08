@@ -9,6 +9,7 @@ export const GAME_TYPE_LABEL: Record<GameType, string> = {
   matching: "Matching",
   memory_challenge: "Memory Challenge",
   flashcards: "Flashcards",
+  beehive_recall: "BeeHive Recall",
 }
 
 export const GAME_TYPE_DESCRIPTION: Record<GameType, string> = {
@@ -20,7 +21,31 @@ export const GAME_TYPE_DESCRIPTION: Record<GameType, string> = {
   matching: "Match every word to its translation.",
   memory_challenge: "Flip cards to find matching pairs.",
   flashcards: "Self-paced review -- flip to reveal the translation.",
+  beehive_recall: "Study a group of words, then type everything you remember.",
 }
+
+export type RecallDifficulty = "easy" | "medium" | "hard" | "expert"
+
+export const RECALL_DIFFICULTY_LABEL: Record<RecallDifficulty, string> = {
+  easy: "Easy",
+  medium: "Medium",
+  hard: "Hard",
+  expert: "Expert",
+}
+
+/** Word count and study-display duration are both derived from
+ * difficulty for BeeHive Recall, rather than a free "number of words"
+ * input like every other game type -- these presets are the whole
+ * knob. `answerSeconds` (how long students get to type) stays
+ * separately teacher-configurable, default 30, per the spec. */
+export const RECALL_DIFFICULTY_PRESETS: Record<RecallDifficulty, { wordCount: number; displaySeconds: number }> = {
+  easy: { wordCount: 3, displaySeconds: 5 },
+  medium: { wordCount: 5, displaySeconds: 8 },
+  hard: { wordCount: 8, displaySeconds: 12 },
+  expert: { wordCount: 10, displaySeconds: 15 },
+}
+
+export const RECALL_DEFAULT_ANSWER_SECONDS = 30
 
 /** fill_in_blank needs a practice_sentence on every eligible word. */
 export const GAME_TYPE_REQUIRES_PRACTICE_SENTENCE: Partial<Record<GameType, boolean>> = {

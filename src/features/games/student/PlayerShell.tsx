@@ -4,8 +4,10 @@ import { PartyPopper, Users } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useStudentsQuery } from "@/features/classes/students/useStudents"
 import { GAME_TYPE_LABEL } from "@/features/games/constants"
+import { BeeHiveRecallResults } from "@/features/games/components/BeeHiveRecallResults"
 import { Leaderboard } from "@/features/games/components/Leaderboard"
 import { useJoinGameSessionMutation } from "@/features/games/useGameActions"
+import { useGameAnswersForQuestionQuery } from "@/features/games/useGameAnswers"
 import { useGameQuestionsQuery, type QuestionPayload } from "@/features/games/useGameQuestions"
 import {
   useActiveGameSessionForClassQuery,
@@ -13,6 +15,7 @@ import {
   useGameSessionQuery,
 } from "@/features/games/useGameSession"
 
+import { BeeHiveRecallPlayer } from "./BeeHiveRecallPlayer"
 import { FlashcardsPlayer } from "./FlashcardsPlayer"
 import { MultipleChoicePlayer } from "./MultipleChoicePlayer"
 import { PairsPlayer } from "./PairsPlayer"
@@ -97,6 +100,12 @@ export function PlayerShell({ classId, classStudentId }: PlayerShellProps) {
   if (session.status === "completed") {
     const own = participants?.find((p) => p.class_student_id === classStudentId)
     const isFlashcards = session.game_type === "flashcards"
+    const isRecall = session.game_type === "beehive_recall"
+    const recallQuestion = questions?.[0]
+    const recallPayload = isRecall
+      ? (recallQuestion?.question_payload as unknown as Extract<QuestionPayload, { type: "beehive_recall" }>)
+      : undefined
+
     return (
       <div className="flex flex-col gap-4">
         <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed py-8 text-center">
@@ -104,6 +113,13 @@ export function PlayerShell({ classId, classStudentId }: PlayerShellProps) {
           <p className="font-medium">{isFlashcards ? "Nice work!" : "Game over!"}</p>
           {!isFlashcards && own && <p className="text-sm text-muted-foreground">You scored {own.score} points</p>}
         </div>
+        {isRecall && recallQuestion && recallPayload && (
+          <RecallResultsForStudent
+            gameQuestionId={recallQuestion.id}
+            pairs={recallPayload.pairs}
+            ownParticipantId={participantId}
+          />
+        )}
         {!isFlashcards && (
           <Leaderboard
             participants={participants ?? []}
@@ -184,7 +200,25 @@ export function PlayerShell({ classId, classStudentId }: PlayerShellProps) {
           choices={payload.choices}
         />
       )
+    case "beehive_recall":
+      return <BeeHiveRecallPlayer gameQuestionId={currentQuestion.id} participantId={participantId} payload={payload} />
     default:
       return null
   }
+}
+
+/** Owns the game_answers fetch so it's only made when actually needed
+ * (the completed-state BeeHive Recall results block), without
+ * conditionally calling a hook inside PlayerShell itself. */
+function RecallResultsForStudent({
+  gameQuestionId,
+  pairs,
+  ownParticipantId,
+}: {
+  gameQuestionId: string
+  pairs: { wordId: string; word: string }[]
+  ownParticipantId: string
+}) {
+  const { data: answers } = useGameAnswersForQuestionQuery(gameQuestionId)
+  return <BeeHiveRecallResults pairs={pairs} answers={answers ?? []} ownParticipantId={ownParticipantId} />
 }

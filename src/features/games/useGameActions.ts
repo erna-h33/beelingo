@@ -20,6 +20,12 @@ export interface CreateGameSessionInput {
   questionCount: number
   topic?: string
   teamCount?: number
+  /** BeeHive Recall only -- how long the word grid stays visible before
+   * fading out, in seconds. Derived from the chosen difficulty preset. */
+  displaySeconds?: number
+  /** BeeHive Recall only -- how long students get to type recalled
+   * words, in seconds. Teacher-configurable, defaults to 30. */
+  answerSeconds?: number
 }
 
 /** Teacher-only: builds the whole question set via weighted selection.
@@ -31,6 +37,8 @@ export function useCreateGameSessionMutation() {
       const settings: Record<string, unknown> = { questionCount: input.questionCount }
       if (input.topic) settings.topic = input.topic
       if (input.teamCount) settings.teamCount = input.teamCount
+      if (input.displaySeconds) settings.displaySeconds = input.displaySeconds
+      if (input.answerSeconds) settings.answerSeconds = input.answerSeconds
 
       const { data, error } = await supabase.rpc("game_create_session", {
         p_class_id: input.classId,

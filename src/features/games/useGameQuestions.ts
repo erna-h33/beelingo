@@ -15,6 +15,13 @@ export type QuestionPayload =
   | { type: "typing_challenge"; prompt: string }
   | { type: "fill_in_blank"; sentence: string }
   | { type: "speed_translation" | "team_battle" | "reverse_translation"; prompt: string; choices: string[] }
+  | {
+      type: "beehive_recall"
+      pairs: { wordId: string; word: string }[]
+      displaySeconds: number
+      answerSeconds: number
+      pointsPerCorrect: number
+    }
 
 /**
  * game_questions rows for a session, RLS-gated by
