@@ -14,7 +14,7 @@ export const GAME_TYPE_LABEL: Record<GameType, string> = {
 export const GAME_TYPE_DESCRIPTION: Record<GameType, string> = {
   speed_translation: "See the word, pick the right translation.",
   reverse_translation: "See the translation, pick the right word.",
-  typing_challenge: "Type the translation from memory.",
+  typing_challenge: "See the translation, type the word from memory.",
   fill_in_blank: "Fill in the missing word in a practice sentence.",
   team_battle: "Speed Translation, scored by team.",
   matching: "Match every word to its translation.",

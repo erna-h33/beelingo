@@ -148,9 +148,9 @@ export function PlayerShell({ classId, classStudentId }: PlayerShellProps) {
         <TypingPlayer
           gameQuestionId={currentQuestion.id}
           participantId={participantId}
-          promptLabel="Translate this word"
+          promptLabel="Type the word for this"
           prompt={payload.prompt}
-          placeholder="Type the translation"
+          placeholder="Type the word"
         />
       )
     case "fill_in_blank":
