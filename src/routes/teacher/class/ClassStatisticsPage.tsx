@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useClassQuery } from "@/features/classes/useClasses"
 import { exportClassReportPdf } from "@/features/export/pdf"
 import { MostMissedWordsChart } from "@/features/statistics/components/MostMissedWordsChart"
+import { Scoreboard } from "@/features/statistics/components/Scoreboard"
 import { StatCard } from "@/features/statistics/components/StatCard"
 import { StudentProgressTable } from "@/features/statistics/components/StudentProgressTable"
 import {
@@ -83,26 +84,35 @@ export default function ClassStatisticsPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
+            <CardTitle className="text-base">Scoreboard</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {studentStatsLoading ? <Skeleton className="h-40" /> : <Scoreboard students={studentStats ?? []} />}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle className="text-base">Most missed words</CardTitle>
           </CardHeader>
           <CardContent>
             {wordStatsLoading ? <Skeleton className="h-40" /> : <MostMissedWordsChart stats={wordStats ?? []} />}
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Student progress</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {studentStatsLoading ? (
-              <Skeleton className="h-40" />
-            ) : (
-              <StudentProgressTable stats={studentStats ?? []} />
-            )}
-          </CardContent>
-        </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Student progress</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {studentStatsLoading ? (
+            <Skeleton className="h-40" />
+          ) : (
+            <StudentProgressTable stats={studentStats ?? []} />
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

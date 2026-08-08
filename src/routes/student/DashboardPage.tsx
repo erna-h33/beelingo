@@ -2,11 +2,13 @@ import { Link } from "react-router-dom"
 import { CheckCircle2, Flame, Gamepad2, MessageSquarePlus, Percent } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { GAME_TYPE_LABEL } from "@/features/games/constants"
 import { useActiveGameSessionForClassQuery } from "@/features/games/useGameSession"
+import { Scoreboard } from "@/features/statistics/components/Scoreboard"
 import { StatCard } from "@/features/statistics/components/StatCard"
+import { useClassStudentStatsQuery } from "@/features/statistics/useClassStats"
 import { useStudentDashboardStatsQuery } from "@/features/statistics/useDashboardStats"
 import { useStudentSessionQuery } from "@/features/studentSession/useStudentSession"
 
@@ -14,6 +16,7 @@ export default function DashboardPage() {
   const { data: session, isLoading: sessionLoading } = useStudentSessionQuery()
   const { data: stats, isLoading: statsLoading } = useStudentDashboardStatsQuery(Boolean(session))
   const { data: activeSession } = useActiveGameSessionForClassQuery(session?.classId)
+  const { data: classStudents, isLoading: scoreboardLoading } = useClassStudentStatsQuery(session?.classId)
 
   if (sessionLoading) {
     return (
@@ -71,6 +74,19 @@ export default function DashboardPage() {
           <StatCard icon={MessageSquarePlus} label="Contributions" value={stats?.contributionsCount ?? 0} />
         </div>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Scoreboard</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {scoreboardLoading ? (
+            <Skeleton className="h-40" />
+          ) : (
+            <Scoreboard students={classStudents ?? []} highlightClassStudentId={session.classStudentId} />
+          )}
+        </CardContent>
+      </Card>
 
       {!activeSession && (
         <Button asChild variant="outline" size="lg" className="w-full">
