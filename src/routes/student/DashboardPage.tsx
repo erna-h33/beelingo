@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { GAME_TYPE_LABEL } from "@/features/games/constants"
 import { useActiveGameSessionForClassQuery } from "@/features/games/useGameSession"
-import { StatCard } from "@/features/statistics/components/StatCard"
+import { HexStatRow, HexStatRowSkeleton } from "@/features/statistics/components/HexStatRow"
 import { useStudentDashboardStatsQuery } from "@/features/statistics/useDashboardStats"
 import { useStudentSessionQuery } from "@/features/studentSession/useStudentSession"
 
@@ -58,18 +58,16 @@ export default function DashboardPage() {
       )}
 
       {statsLoading ? (
-        <div className="grid grid-cols-2 gap-3">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-[68px]" />
-          ))}
-        </div>
+        <HexStatRowSkeleton />
       ) : (
-        <div className="grid grid-cols-2 gap-3">
-          <StatCard icon={Flame} label="Day streak" value={stats?.streakDays ?? 0} />
-          <StatCard icon={Percent} label="Accuracy" value={accuracy === null ? "—" : `${accuracy}%`} />
-          <StatCard icon={CheckCircle2} label="Words learned" value={stats?.wordsLearned ?? 0} />
-          <StatCard icon={MessageSquarePlus} label="Contributions" value={stats?.contributionsCount ?? 0} />
-        </div>
+        <HexStatRow
+          stats={[
+            { icon: Flame, label: "Day streak", value: stats?.streakDays ?? 0 },
+            { icon: Percent, label: "Accuracy", value: accuracy === null ? "—" : `${accuracy}%` },
+            { icon: CheckCircle2, label: "Words learned", value: stats?.wordsLearned ?? 0 },
+            { icon: MessageSquarePlus, label: "Contributions", value: stats?.contributionsCount ?? 0 },
+          ]}
+        />
       )}
 
       {!activeSession && (
