@@ -20,7 +20,6 @@ export type QuestionPayload =
       pairs: { wordId: string; word: string }[]
       displaySeconds: number
       answerSeconds: number
-      pointsPerCorrect: number
     }
 
 /**
