@@ -40,14 +40,16 @@ export default function ClassHivePage() {
   const filteredWords = useMemo(() => {
     if (!words) return []
     const query = search.trim().toLowerCase()
-    return words.filter((w) => {
-      const matchesTopic = topic === ALL_TOPICS || w.topic === topic
-      const matchesSearch =
-        !query ||
-        w.word.toLowerCase().includes(query) ||
-        (w.translation ?? "").toLowerCase().includes(query)
-      return matchesTopic && matchesSearch
-    })
+    return words
+      .filter((w) => {
+        const matchesTopic = topic === ALL_TOPICS || w.topic === topic
+        const matchesSearch =
+          !query ||
+          w.word.toLowerCase().includes(query) ||
+          (w.translation ?? "").toLowerCase().includes(query)
+        return matchesTopic && matchesSearch
+      })
+      .sort((a, b) => a.word.localeCompare(b.word))
   }, [words, search, topic])
 
   const existingWordsLower = useMemo(

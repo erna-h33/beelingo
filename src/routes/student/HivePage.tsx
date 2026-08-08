@@ -23,11 +23,14 @@ export default function HivePage() {
   const filteredWords = useMemo(() => {
     if (!words) return []
     const query = search.trim().toLowerCase()
-    if (!query) return words
-    return words.filter(
-      (w) =>
-        w.word.toLowerCase().includes(query) || (w.translation ?? "").toLowerCase().includes(query),
-    )
+    const matches = query
+      ? words.filter(
+          (w) =>
+            w.word.toLowerCase().includes(query) ||
+            (w.translation ?? "").toLowerCase().includes(query),
+        )
+      : words
+    return [...matches].sort((a, b) => a.word.localeCompare(b.word))
   }, [words, search])
 
   if (!session) return null
