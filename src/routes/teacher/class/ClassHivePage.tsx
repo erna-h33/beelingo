@@ -66,7 +66,7 @@ export default function ClassHivePage() {
             Every word this class has collected. Everything here is editable.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {words && words.length > 0 && classItem && (
             <ExportHiveDialog
               className={classItem.name}

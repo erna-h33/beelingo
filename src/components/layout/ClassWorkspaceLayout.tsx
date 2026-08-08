@@ -102,14 +102,18 @@ export function ClassWorkspaceLayout() {
       <ClassCodeCard classCode={classItem.class_code} />
 
       <div className="border-b border-border">
-        <nav className="flex gap-1">
+        {/* overflow-x-auto is a safety net (e.g. very narrow phones or a
+         * future 5th tab) -- the tightened gap/padding below already fits
+         * all four tabs without scrolling at the 375px baseline this was
+         * overflowing at before. */}
+        <nav className="flex gap-0.5 overflow-x-auto sm:gap-1">
           {TABS.map((tab) => (
             <NavLink
               key={tab.to}
               to={tab.to}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors",
+                  "flex shrink-0 items-center gap-1.5 border-b-2 px-2 py-2.5 text-sm font-medium whitespace-nowrap transition-colors sm:gap-2 sm:px-3",
                   isActive
                     ? "border-primary text-primary"
                     : "border-transparent text-muted-foreground hover:text-foreground",

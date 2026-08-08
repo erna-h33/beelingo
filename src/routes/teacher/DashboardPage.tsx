@@ -31,7 +31,9 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Welcome back{teacherName ? `, ${teacherName}` : ""}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight break-words">
+          Welcome back{teacherName ? `, ${teacherName}` : ""}
+        </h1>
         <p className="text-sm text-muted-foreground">Here's how your classes are doing.</p>
       </div>
 
