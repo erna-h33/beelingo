@@ -16,7 +16,7 @@ export function StatCard({ icon: Icon, label, value }: StatCardProps) {
           <Icon className="size-4.5" />
         </div>
         <div>
-          <p className="text-xl font-semibold leading-none tabular-nums">{value}</p>
+          <p className="font-display text-xl font-semibold leading-none tabular-nums">{value}</p>
           <p className="text-xs text-muted-foreground">{label}</p>
         </div>
       </CardContent>

@@ -85,7 +85,7 @@ export function Scoreboard({ students, highlightClassStudentId }: ScoreboardProp
               <span className="w-full truncate text-center text-base font-medium sm:text-xl">
                 {s.displayName}
               </span>
-              <span className="flex items-center gap-1 text-sm font-semibold tabular-nums text-muted-foreground sm:text-base">
+              <span className="flex items-center gap-1 font-display text-sm font-semibold tabular-nums text-muted-foreground sm:text-base">
                 <Star className="size-4 fill-primary text-primary sm:size-5" />
                 {s.totalScore}
               </span>
@@ -112,9 +112,9 @@ export function Scoreboard({ students, highlightClassStudentId }: ScoreboardProp
                 s.classStudentId === highlightClassStudentId && "border-primary bg-primary/5",
               )}
             >
-              <span className="w-6 shrink-0 text-center text-sm text-muted-foreground">{i + 4}</span>
+              <span className="w-6 shrink-0 text-center font-display text-sm text-muted-foreground">{i + 4}</span>
               <span className="flex-1 truncate font-medium">{s.displayName}</span>
-              <span className="flex shrink-0 items-center gap-1 tabular-nums font-semibold">
+              <span className="flex shrink-0 items-center gap-1 font-display tabular-nums font-semibold">
                 <Star className="size-3.5 fill-primary text-primary" />
                 {s.totalScore}
               </span>
