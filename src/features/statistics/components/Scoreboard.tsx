@@ -1,21 +1,21 @@
 import { useMemo } from "react"
-import { Trophy } from "lucide-react"
+import { Star } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import type { ClassStudentStat } from "@/lib/supabase/types"
 
-const MEDALS = ["🥇", "🥈", "🥉"]
+const ORDINALS = ["1st", "2nd", "3rd"]
 
-/** Rank-specific styling for the top-3 podium avatars -- gold gets the
- * same primary-tint treatment already used for highlighted/active
- * elements elsewhere on the dashboard (e.g. the active-game banner
- * card), silver/bronze step down through the existing secondary/accent
- * tokens rather than introducing new one-off colors. */
+/** Rank-specific styling for the top-3 podium -- gold gets the same
+ * primary-tint treatment already used for highlighted/active elements
+ * elsewhere on the dashboard (e.g. the active-game banner card),
+ * silver/bronze step down through the existing secondary/accent tokens
+ * rather than introducing new one-off colors. */
 const PODIUM_STYLE = [
-  { avatar: "bg-primary/15 text-primary ring-2 ring-primary/30", card: "border-primary/40 bg-primary/5" },
-  { avatar: "bg-secondary text-secondary-foreground", card: "border-border" },
-  { avatar: "bg-accent text-accent-foreground", card: "border-border" },
+  { avatar: "bg-primary/15 text-primary ring-2 ring-primary/30", card: "border-primary/40 bg-primary/5", ordinal: "text-primary" },
+  { avatar: "bg-secondary text-secondary-foreground", card: "border-border", ordinal: "text-secondary-foreground" },
+  { avatar: "bg-accent text-accent-foreground", card: "border-border", ordinal: "text-accent-foreground" },
 ]
 
 interface ScoreboardProps {
@@ -47,7 +47,7 @@ export function Scoreboard({ students, highlightClassStudentId }: ScoreboardProp
 
   return (
     <div className="flex flex-col gap-4">
-      <div className={cn("gap-2", top3.length === 3 ? "grid grid-cols-3" : "flex justify-center")}>
+      <div className={cn("gap-2", top3.length === 3 ? "grid grid-cols-3 justify-items-center" : "flex justify-center")}>
         {top3.map((s, i) => {
           const isFirst = i === 0
           const isHighlighted = s.classStudentId === highlightClassStudentId
@@ -56,22 +56,24 @@ export function Scoreboard({ students, highlightClassStudentId }: ScoreboardProp
             <div
               key={s.classStudentId}
               className={cn(
-                "flex w-full max-w-28 flex-col items-center gap-1.5 rounded-lg border px-2 py-3 text-center",
+                "flex w-full max-w-28 flex-col items-center gap-1 rounded-lg border px-2 py-3 text-center",
                 style.card,
                 isFirst && "-mt-2.5 pb-4",
                 isHighlighted && "ring-2 ring-primary",
                 podiumOrder[i],
               )}
             >
-              <span className="text-lg leading-none">{MEDALS[i]}</span>
-              <Avatar size={isFirst ? "lg" : "default"}>
+              <span className={cn("font-serif text-lg font-bold italic leading-none", style.ordinal)}>
+                {ORDINALS[i]}
+              </span>
+              <Avatar size={isFirst ? "lg" : "default"} className="mt-1">
                 <AvatarFallback className={style.avatar}>
                   {s.displayName.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <span className="w-full truncate text-sm font-medium">{s.displayName}</span>
               <span className="flex items-center gap-1 text-xs font-semibold tabular-nums text-muted-foreground">
-                <Trophy className="size-3" />
+                <Star className="size-3 fill-primary text-primary" />
                 {s.totalScore}
               </span>
             </div>
@@ -92,7 +94,7 @@ export function Scoreboard({ students, highlightClassStudentId }: ScoreboardProp
               <span className="w-6 shrink-0 text-center text-sm text-muted-foreground">{i + 4}</span>
               <span className="flex-1 truncate font-medium">{s.displayName}</span>
               <span className="flex shrink-0 items-center gap-1 tabular-nums font-semibold">
-                <Trophy className="size-3.5 text-muted-foreground" />
+                <Star className="size-3.5 fill-primary text-primary" />
                 {s.totalScore}
               </span>
             </li>
