@@ -1,10 +1,11 @@
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom"
-import { Users, LayoutDashboard, GraduationCap } from "lucide-react"
+import { Users, LayoutDashboard } from "lucide-react"
 import { toast } from "sonner"
 
 import { cn } from "@/lib/utils"
 import { supabase } from "@/lib/supabase/client"
 import { useAuth } from "@/features/auth/useAuth"
+import { BeelingoLogo } from "@/components/BeelingoLogo"
 import { ThemeToggle } from "@/components/theme-toggle"
 import {
   Avatar,
@@ -48,7 +49,7 @@ export function TeacherShell() {
     <div className="flex min-h-dvh bg-background text-foreground">
       <aside className="hidden w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex">
         <Link to="/t" className="flex items-center gap-2 px-5 py-5">
-          <GraduationCap className="size-6 text-primary" />
+          <BeelingoLogo className="size-6 text-primary" />
           <span className="text-lg font-semibold tracking-tight">Beelingo</span>
         </Link>
         <nav className="flex flex-1 flex-col gap-1 px-3">
@@ -76,7 +77,7 @@ export function TeacherShell() {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-16 shrink-0 items-center justify-between border-b border-border px-4 md:px-6">
           <Link to="/t" className="flex items-center gap-2 md:hidden">
-            <GraduationCap className="size-5 text-primary" />
+            <BeelingoLogo className="size-5 text-primary" />
             <span className="font-semibold">Beelingo</span>
           </Link>
           <div className="ml-auto flex items-center gap-2">

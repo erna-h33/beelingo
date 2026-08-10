@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { GraduationCap, Loader2 } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { supabase } from "@/lib/supabase/client"
@@ -11,6 +11,7 @@ import { authFormSchema, type AuthFormValues } from "@/features/auth/schemas"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { BeelingoLogo } from "@/components/BeelingoLogo"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { cn } from "@/lib/utils"
 import {
@@ -76,7 +77,7 @@ export default function LoginPage() {
       </div>
 
       <div className="flex items-center gap-2">
-        <GraduationCap className="size-7 text-primary" />
+        <BeelingoLogo className="size-7 text-primary" />
         <span className="text-xl font-semibold tracking-tight">Beelingo</span>
       </div>
 

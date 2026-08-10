@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
-import { ArrowLeft, ArrowRight, GraduationCap, Loader2 } from "lucide-react"
+import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { BeelingoLogo } from "@/components/BeelingoLogo"
 import { ThemeToggle } from "@/components/theme-toggle"
 import {
   Card,
@@ -79,7 +80,7 @@ export default function JoinPage() {
       </div>
 
       <div className="flex items-center gap-2">
-        <GraduationCap className="size-7 text-primary" />
+        <BeelingoLogo className="size-7 text-primary" />
         <span className="text-xl font-semibold tracking-tight">Beelingo</span>
       </div>
 

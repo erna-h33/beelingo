@@ -2,6 +2,7 @@ import { Link } from "react-router-dom"
 import { GraduationCap, QrCode, Users } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { BeelingoLogo } from "@/components/BeelingoLogo"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Card, CardContent } from "@/components/ui/card"
 
@@ -15,7 +16,7 @@ export default function LandingPage() {
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
       <header className="flex items-center justify-between px-6 py-5">
         <div className="flex items-center gap-2">
-          <GraduationCap className="size-6 text-primary" />
+          <BeelingoLogo className="size-6 text-primary" />
           <span className="text-lg font-semibold tracking-tight">Beelingo</span>
         </div>
         <ThemeToggle />
