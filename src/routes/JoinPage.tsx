@@ -50,8 +50,17 @@ export default function JoinPage() {
       const result = await lookupClass.mutateAsync(code)
       setFound(result)
     } catch (error) {
+      const message = error instanceof Error ? error.message : undefined
+      // lookup_class_by_code's own rate limit (too many wrong codes from
+      // this network in a short window) raises this exact message --
+      // worth a distinct, accurate toast rather than implying the code
+      // itself was wrong.
+      if (message?.startsWith("Too many attempts")) {
+        toast.error("Too many attempts", { description: "Please wait a few minutes and try again." })
+        return
+      }
       toast.error("Class not found", {
-        description: error instanceof Error ? error.message : "Double-check the code and try again.",
+        description: message ?? "Double-check the code and try again.",
       })
     }
   }
