@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { CheckCircle2, Hexagon, Plus, Search, Sparkles } from "lucide-react"
+import { Hexagon, Plus, Search, Sparkles } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,6 +10,7 @@ import { useStudentSessionQuery } from "@/features/studentSession/useStudentSess
 import { useHiveWordsQuery } from "@/features/hive/useHiveWords"
 import { useMyContributionsQuery } from "@/features/hive/useContributions"
 import { ContributeWordDialog } from "@/features/hive/components/ContributeWordDialog"
+import { MyContributionRow } from "@/features/hive/components/MyContributionRow"
 import { AudioPlayButton } from "@/features/hive/audio/AudioPlayButton"
 
 export default function HivePage() {
@@ -144,15 +145,12 @@ export default function HivePage() {
 
           {!contributionsLoading &&
             contributions?.map((contribution) => (
-              <div key={contribution.id} className="flex items-center gap-2 rounded-lg border border-border p-3">
-                <CheckCircle2 className="size-4 shrink-0 text-success" />
-                <div className="min-w-0">
-                  <p className="font-medium">{contribution.word}</p>
-                  {contribution.translation && (
-                    <p className="truncate text-sm text-muted-foreground">{contribution.translation}</p>
-                  )}
-                </div>
-              </div>
+              <MyContributionRow
+                key={contribution.id}
+                contribution={contribution}
+                classStudentId={session.classStudentId}
+                classId={session.classId}
+              />
             ))}
         </TabsContent>
       </Tabs>

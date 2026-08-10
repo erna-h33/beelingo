@@ -44,6 +44,11 @@ interface HiveWordFormDialogProps {
     deeplSourceCode: string | null
     deeplTargetCode: string | null
   }
+  /** The student-facing self-edit dialog omits this field -- "teacher
+   * notes" is explicitly the teacher's own annotation space, not
+   * something a student editing their own contribution should see or
+   * write into. */
+  hideTeacherNotes?: boolean
 }
 
 const EMPTY_DEFAULTS: HiveWordFormValues = { word: "" }
@@ -58,6 +63,7 @@ export function HiveWordFormDialog({
   onOpenChange,
   onSubmit,
   enrichment,
+  hideTeacherNotes,
 }: HiveWordFormDialogProps) {
   const {
     register,
@@ -235,10 +241,12 @@ export function HiveWordFormDialog({
             />
           </div>
 
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="teacherNotes">Teacher notes</Label>
-            <Textarea id="teacherNotes" rows={2} placeholder="Optional" {...register("teacherNotes")} />
-          </div>
+          {!hideTeacherNotes && (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="teacherNotes">Teacher notes</Label>
+              <Textarea id="teacherNotes" rows={2} placeholder="Optional" {...register("teacherNotes")} />
+            </div>
+          )}
 
           <DialogFooter>
             <Button type="submit" disabled={isSubmitting}>
