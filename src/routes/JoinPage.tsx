@@ -35,7 +35,20 @@ export default function JoinPage() {
   const joinClass = useJoinClassMutation()
   const autoLookedUp = useRef(false)
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  // Set once if Turnstile can't produce a token at all (blocked script,
+  // offline, stalled) -- lets students proceed anyway rather than
+  // leaving the roster buttons disabled forever. A real outage still
+  // surfaces normally: Supabase rejects the token-less request and the
+  // existing catch below shows that as a normal error toast.
+  const [captchaUnavailable, setCaptchaUnavailable] = useState(false)
   const turnstileRef = useRef<TurnstileHandle>(null)
+  // The actual bug this guards against: tapping a name the instant the
+  // roster renders, before Turnstile has finished getting a token,
+  // silently sent signInAnonymously with none at all -- which now that
+  // CAPTCHA protection is enforced server-side, Supabase correctly
+  // rejects. Wait for a token (or the unavailable fallback) instead of
+  // racing it.
+  const readyToJoin = Boolean(captchaToken) || captchaUnavailable
 
   // Already recognized on this device -- skip straight to the dashboard.
   useEffect(() => {
@@ -163,7 +176,7 @@ export default function JoinPage() {
                     variant="outline"
                     size="lg"
                     className="justify-start text-base"
-                    disabled={joinClass.isPending}
+                    disabled={joinClass.isPending || !readyToJoin}
                     onClick={() => handlePickName(student.id)}
                   >
                     {joinClass.isPending && joinClass.variables?.classStudentId === student.id && (
@@ -174,7 +187,18 @@ export default function JoinPage() {
                 ))}
               </div>
             )}
-            <TurnstileWidget ref={turnstileRef} onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
+            {!readyToJoin && (
+              <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Loader2 className="size-3 animate-spin" />
+                Getting ready…
+              </p>
+            )}
+            <TurnstileWidget
+              ref={turnstileRef}
+              onVerify={setCaptchaToken}
+              onExpire={() => setCaptchaToken(null)}
+              onUnavailable={() => setCaptchaUnavailable(true)}
+            />
           </CardContent>
         </Card>
       )}

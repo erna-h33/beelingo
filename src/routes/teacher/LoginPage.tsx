@@ -30,7 +30,12 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const { status } = useAuth()
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  // See JoinPage's identical guard: without this, submitting before
+  // Turnstile finishes sends the request with no token at all, which
+  // Supabase now rejects outright rather than silently allowing.
+  const [captchaUnavailable, setCaptchaUnavailable] = useState(false)
   const turnstileRef = useRef<TurnstileHandle>(null)
+  const readyToSubmit = Boolean(captchaToken) || captchaUnavailable
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -153,9 +158,14 @@ export default function LoginPage() {
                 <p className="text-sm text-destructive">{errors.password.message}</p>
               )}
             </div>
-            <TurnstileWidget ref={turnstileRef} onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
-            <Button type="submit" size="lg" disabled={isSubmitting}>
-              {isSubmitting && <Loader2 className="size-4 animate-spin" />}
+            <TurnstileWidget
+              ref={turnstileRef}
+              onVerify={setCaptchaToken}
+              onExpire={() => setCaptchaToken(null)}
+              onUnavailable={() => setCaptchaUnavailable(true)}
+            />
+            <Button type="submit" size="lg" disabled={isSubmitting || !readyToSubmit}>
+              {(isSubmitting || !readyToSubmit) && <Loader2 className="size-4 animate-spin" />}
               {mode === "login" ? "Log in" : "Create account"}
             </Button>
           </form>
