@@ -5,17 +5,16 @@ import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import type { ClassStudentStat } from "@/lib/supabase/types"
 
-const ORDINALS = ["1st", "2nd", "3rd"]
-
-/** Rank-specific styling for the top-3 podium -- gold gets the same
+/** Rank-specific styling for the top-3 podium -- gold reuses the same
  * primary-tint treatment already used for highlighted/active elements
  * elsewhere on the dashboard (e.g. the active-game banner card),
  * silver/bronze step down through the existing secondary/accent tokens
- * rather than introducing new one-off colors. */
-const PODIUM_STYLE = [
-  { avatar: "bg-primary/15 text-primary ring-2 ring-primary/30", card: "border-primary/40 bg-primary/5", ordinal: "text-primary" },
-  { avatar: "bg-secondary text-secondary-foreground", card: "border-border", ordinal: "text-secondary-foreground" },
-  { avatar: "bg-accent text-accent-foreground", card: "border-border", ordinal: "text-accent-foreground" },
+ * rather than introducing new one-off colors. Pedestal height shrinks
+ * 1st -> 3rd, the classic podium "steps" cue. */
+const PODIUM = [
+  { avatar: "bg-primary/15 text-primary", step: "h-16 bg-primary text-primary-foreground" },
+  { avatar: "bg-secondary text-secondary-foreground", step: "h-11 bg-secondary text-secondary-foreground" },
+  { avatar: "bg-accent text-accent-foreground", step: "h-8 bg-accent text-accent-foreground" },
 ]
 
 interface ScoreboardProps {
@@ -28,8 +27,9 @@ interface ScoreboardProps {
  * cumulative totalScore across every completed game in the class, not
  * one session's live participants (see Leaderboard for that). Shown on
  * the teacher's per-class Statistics tab and the student's own
- * dashboard: top 3 as a podium (gold elevated + larger, in the middle),
- * everyone else below as a plain ranked list.
+ * dashboard: top 3 as an actual podium (rank number on a stepped block,
+ * tallest/gold in the middle), everyone else below as a plain ranked
+ * list.
  */
 export function Scoreboard({ students, highlightClassStudentId }: ScoreboardProps) {
   const ranked = useMemo(() => [...students].sort((a, b) => b.totalScore - a.totalScore), [students])
@@ -40,42 +40,44 @@ export function Scoreboard({ students, highlightClassStudentId }: ScoreboardProp
 
   const top3 = ranked.slice(0, 3)
   const rest = ranked.slice(3)
-  // Only reorder into the classic 2nd-1st-3rd podium layout when there
-  // are exactly three -- with fewer, plain rank order reads better than
-  // a lopsided "gap" where 2nd or 3rd would otherwise be.
+  // Only reorder into the classic 2nd-1st-3rd arrangement when there
+  // are exactly three -- with fewer, the step height alone already
+  // conveys rank, so plain rank order reads better than forcing a gap.
   const podiumOrder = top3.length === 3 ? ["order-2", "order-1", "order-3"] : top3.map(() => "")
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className={cn("gap-2", top3.length === 3 ? "grid grid-cols-3 justify-items-center" : "flex justify-center")}>
+    <div className="flex flex-col gap-5">
+      <div className="flex items-end justify-center gap-3">
         {top3.map((s, i) => {
           const isFirst = i === 0
           const isHighlighted = s.classStudentId === highlightClassStudentId
-          const style = PODIUM_STYLE[i]
+          const style = PODIUM[i]
           return (
             <div
               key={s.classStudentId}
-              className={cn(
-                "flex w-full max-w-28 flex-col items-center gap-1 rounded-lg border px-2 py-3 text-center",
-                style.card,
-                isFirst && "-mt-2.5 pb-4",
-                isHighlighted && "ring-2 ring-primary",
-                podiumOrder[i],
-              )}
+              className={cn("flex w-20 flex-col items-center gap-1.5", podiumOrder[i])}
             >
-              <span className={cn("font-serif text-lg font-bold italic leading-none", style.ordinal)}>
-                {ORDINALS[i]}
-              </span>
-              <Avatar size={isFirst ? "lg" : "default"} className="mt-1">
+              <Avatar
+                size={isFirst ? "lg" : "default"}
+                className={cn(isHighlighted && "ring-2 ring-primary ring-offset-2 ring-offset-background")}
+              >
                 <AvatarFallback className={style.avatar}>
                   {s.displayName.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <span className="w-full truncate text-sm font-medium">{s.displayName}</span>
+              <span className="w-full truncate text-center text-sm font-medium">{s.displayName}</span>
               <span className="flex items-center gap-1 text-xs font-semibold tabular-nums text-muted-foreground">
                 <Star className="size-3 fill-primary text-primary" />
                 {s.totalScore}
               </span>
+              <div
+                className={cn(
+                  "flex w-full items-center justify-center rounded-t-md font-display text-2xl font-bold",
+                  style.step,
+                )}
+              >
+                {i + 1}
+              </div>
             </div>
           )
         })}
