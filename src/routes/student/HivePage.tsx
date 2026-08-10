@@ -44,6 +44,7 @@ export default function HivePage() {
         </div>
         <ContributeWordDialog
           session={session}
+          existingWords={words ?? []}
           trigger={
             <Button size="sm">
               <Plus className="size-4" />

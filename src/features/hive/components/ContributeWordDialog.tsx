@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from "react"
-import { Loader2, Plus } from "lucide-react"
+import { useMemo, useState, type ReactNode } from "react"
+import { Info, Loader2, Plus } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -15,20 +15,33 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { useContributeWordMutation } from "@/features/hive/useContributions"
+import type { HiveWord } from "@/features/hive/useHiveWords"
 import type { StudentSessionResult } from "@/lib/supabase/types"
 
 interface ContributeWordDialogProps {
   trigger: ReactNode
   session: StudentSessionResult
+  /** The class's current Hive, for a live "already in the Hive" check
+   * as the student types -- purely informational (contributing a word
+   * that already exists is still welcomed as reinforcement, see
+   * handleSubmit's toast), not a validation error. */
+  existingWords: HiveWord[]
 }
 
 /** "What new word did you learn today?" -- just a word; everything else
  * comes from enrichment (or stays blank for the teacher to fill in). No
  * approval workflow -- it lands in the Hive immediately. */
-export function ContributeWordDialog({ trigger, session }: ContributeWordDialogProps) {
+export function ContributeWordDialog({ trigger, session, existingWords }: ContributeWordDialogProps) {
   const [open, setOpen] = useState(false)
   const [word, setWord] = useState("")
   const contributeWord = useContributeWordMutation(session.classStudentId, session.classId)
+
+  const existingByLower = useMemo(
+    () => new Map(existingWords.map((w) => [w.word.toLowerCase(), w])),
+    [existingWords],
+  )
+  const trimmed = word.trim()
+  const duplicate = trimmed ? existingByLower.get(trimmed.toLowerCase()) : undefined
 
   async function handleSubmit() {
     const trimmed = word.trim()
@@ -81,6 +94,13 @@ export function ContributeWordDialog({ trigger, session }: ContributeWordDialogP
             }}
             placeholder={session.learningLanguage.name}
           />
+          {duplicate && (
+            <p className="flex items-center gap-1.5 text-sm text-warning">
+              <Info className="size-3.5 shrink-0" />
+              Already in the Hive
+              {duplicate.translation ? ` — means "${duplicate.translation}"` : ""}
+            </p>
+          )}
         </div>
         <DialogFooter>
           <Button onClick={handleSubmit} disabled={!word.trim() || contributeWord.isPending}>
