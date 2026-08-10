@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { BeelingoLogo } from "@/components/BeelingoLogo"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { TurnstileWidget, type TurnstileHandle } from "@/components/Turnstile"
 import {
   Card,
   CardContent,
@@ -33,6 +34,8 @@ export default function JoinPage() {
   const lookupClass = useLookupClassByCode()
   const joinClass = useJoinClassMutation()
   const autoLookedUp = useRef(false)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const turnstileRef = useRef<TurnstileHandle>(null)
 
   // Already recognized on this device -- skip straight to the dashboard.
   useEffect(() => {
@@ -64,12 +67,13 @@ export default function JoinPage() {
 
   async function handlePickName(classStudentId: string) {
     try {
-      await joinClass.mutateAsync(classStudentId)
+      await joinClass.mutateAsync({ classStudentId, captchaToken })
       navigate("/s", { replace: true })
     } catch (error) {
       toast.error("Couldn't join the class", {
         description: error instanceof Error ? error.message : undefined,
       })
+      turnstileRef.current?.reset()
     }
   }
 
@@ -153,7 +157,7 @@ export default function JoinPage() {
                     disabled={joinClass.isPending}
                     onClick={() => handlePickName(student.id)}
                   >
-                    {joinClass.isPending && joinClass.variables === student.id && (
+                    {joinClass.isPending && joinClass.variables?.classStudentId === student.id && (
                       <Loader2 className="size-4 animate-spin" />
                     )}
                     {student.displayName}
@@ -161,6 +165,7 @@ export default function JoinPage() {
                 ))}
               </div>
             )}
+            <TurnstileWidget ref={turnstileRef} onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
           </CardContent>
         </Card>
       )}

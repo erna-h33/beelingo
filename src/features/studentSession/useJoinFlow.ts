@@ -20,6 +20,15 @@ export function useLookupClassByCode() {
   })
 }
 
+interface JoinClassVariables {
+  classStudentId: string
+  /** From the Turnstile widget shown on the roster screen. Only needed
+   * the first time a device joins -- an already-signed-in device
+   * re-picking a name (or switching classes) skips signInAnonymously
+   * entirely, so no fresh token is required then either. */
+  captchaToken: string | null
+}
+
 /** Step 2: pick a name from the roster. Ensures an anonymous session
  * exists (creating one on first join), then links it to the chosen
  * roster entry via the `join_class` RPC. */
@@ -27,10 +36,12 @@ export function useJoinClassMutation() {
   const invalidateStudentSession = useInvalidateStudentSession()
 
   return useMutation({
-    mutationFn: async (classStudentId: string) => {
+    mutationFn: async ({ classStudentId, captchaToken }: JoinClassVariables) => {
       const { data: sessionData } = await supabase.auth.getSession()
       if (!sessionData.session) {
-        const { error: signInError } = await supabase.auth.signInAnonymously()
+        const { error: signInError } = await supabase.auth.signInAnonymously({
+          options: captchaToken ? { captchaToken } : undefined,
+        })
         if (signInError) throw signInError
       }
 

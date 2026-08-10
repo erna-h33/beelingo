@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { BeelingoLogo } from "@/components/BeelingoLogo"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { TurnstileWidget, type TurnstileHandle } from "@/components/Turnstile"
 import { cn } from "@/lib/utils"
 import {
   Card,
@@ -28,6 +29,8 @@ export default function LoginPage() {
   const [mode, setMode] = useState<Mode>("login")
   const navigate = useNavigate()
   const { status } = useAuth()
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const turnstileRef = useRef<TurnstileHandle>(null)
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -44,19 +47,23 @@ export default function LoginPage() {
   })
 
   async function onSubmit(values: AuthFormValues) {
+    const options = captchaToken ? { captchaToken } : undefined
+
     if (mode === "login") {
-      const { error } = await supabase.auth.signInWithPassword(values)
+      const { error } = await supabase.auth.signInWithPassword({ ...values, options })
       if (error) {
         toast.error("Couldn't log you in", { description: error.message })
+        turnstileRef.current?.reset()
         return
       }
       navigate("/t", { replace: true })
       return
     }
 
-    const { data, error } = await supabase.auth.signUp(values)
+    const { data, error } = await supabase.auth.signUp({ ...values, options })
     if (error) {
       toast.error("Couldn't create your account", { description: error.message })
+      turnstileRef.current?.reset()
       return
     }
     if (data.session) {
@@ -146,6 +153,7 @@ export default function LoginPage() {
                 <p className="text-sm text-destructive">{errors.password.message}</p>
               )}
             </div>
+            <TurnstileWidget ref={turnstileRef} onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
             <Button type="submit" size="lg" disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="size-4 animate-spin" />}
               {mode === "login" ? "Log in" : "Create account"}
