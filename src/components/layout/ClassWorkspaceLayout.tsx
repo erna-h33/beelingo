@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useClassQuery, useUpdateClassMutation } from "@/features/classes/useClasses"
 import { ClassCodeCard } from "@/features/classes/components/ClassCodeCard"
 import { ClassFormDialog } from "@/features/classes/components/ClassFormDialog"
+import { useHiveWordsQuery } from "@/features/hive/useHiveWords"
 
 const TABS = [
   { to: "hive", label: "Hive", icon: Sparkles },
@@ -23,6 +24,10 @@ const TABS = [
 export function ClassWorkspaceLayout() {
   const { classId } = useParams<{ classId: string }>()
   const { data: classItem, isLoading } = useClassQuery(classId)
+  // Shares its cache with ClassHivePage's own identical query (same
+  // queryKey) -- fetched here too only so the "Hive" tab's count is
+  // available without waiting for that page to mount.
+  const { data: hiveWords } = useHiveWordsQuery(classId)
   const updateClass = useUpdateClassMutation()
   const [editOpen, setEditOpen] = useState(false)
 
@@ -122,6 +127,7 @@ export function ClassWorkspaceLayout() {
             >
               <tab.icon className="size-4" />
               {tab.label}
+              {tab.to === "hive" && hiveWords && ` (${hiveWords.length})`}
             </NavLink>
           ))}
         </nav>

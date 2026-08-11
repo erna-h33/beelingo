@@ -71,10 +71,10 @@ export default function HivePage() {
       <Tabs defaultValue="hive">
         <TabsList className="w-full">
           <TabsTrigger value="hive" className="flex-1">
-            Whole Hive
+            Whole Hive{words && ` (${words.length})`}
           </TabsTrigger>
           <TabsTrigger value="mine" className="flex-1">
-            My Contributions
+            My Contributions{contributions && ` (${contributions.length})`}
           </TabsTrigger>
         </TabsList>
 
