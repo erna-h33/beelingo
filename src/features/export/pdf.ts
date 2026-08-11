@@ -85,3 +85,52 @@ export async function exportClassReportPdf(input: ClassReportInput) {
   const date = new Date().toISOString().slice(0, 10)
   doc.save(`${safeName || "class"}-report-${date}.pdf`)
 }
+
+export interface SimpleTablePdfInput {
+  title: string
+  subtitle?: string
+  headers: string[]
+  rows: string[][]
+  filename: string
+}
+
+/** A single-table PDF -- the Hive word-list export (teacher and student
+ * both) uses this rather than the richer multi-section class report
+ * above. Landscape since the Hive's row shape is wide (up to 10
+ * columns, including a free-text Practice Sentence column). */
+export async function exportTablePdf(input: SimpleTablePdfInput) {
+  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+    import("jspdf"),
+    import("jspdf-autotable"),
+  ])
+
+  const doc = new jsPDF({ orientation: "landscape" })
+  const margin = 12
+  let y = 16
+
+  doc.setFontSize(16)
+  doc.text(input.title, margin, y)
+  y += 6
+
+  if (input.subtitle) {
+    doc.setFontSize(10)
+    doc.setTextColor(100)
+    doc.text(input.subtitle, margin, y)
+    y += 5
+  }
+  doc.setFontSize(9)
+  doc.setTextColor(100)
+  doc.text(`Generated ${new Date().toLocaleDateString()}`, margin, y)
+  y += 6
+  doc.setTextColor(0)
+
+  autoTable(doc, {
+    startY: y,
+    head: [input.headers],
+    body: input.rows,
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [230, 180, 60] },
+  })
+
+  doc.save(input.filename)
+}

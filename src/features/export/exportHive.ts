@@ -57,8 +57,10 @@ const HEADERS = [
   "Date Added",
 ]
 
-export function buildHiveCsv(words: HiveWord[]): string {
-  const rows = words.map((w) => [
+/** Shared by both export formats below -- CSV and PDF should never show
+ * different data for the same word list, just a different container. */
+function buildHiveRows(words: HiveWord[]): string[][] {
+  return words.map((w) => [
     w.word,
     w.translation ?? "",
     w.word_type ?? "",
@@ -70,12 +72,33 @@ export function buildHiveCsv(words: HiveWord[]): string {
     w.verified ? "Yes" : "No",
     new Date(w.created_at).toLocaleDateString(),
   ])
-  return toCsv(HEADERS, rows)
+}
+
+export function buildHiveCsv(words: HiveWord[]): string {
+  return toCsv(HEADERS, buildHiveRows(words))
+}
+
+function hiveFileBase(className: string): string {
+  const safeName = className.trim().replace(/[^a-z0-9]+/gi, "-").toLowerCase()
+  const date = new Date().toISOString().slice(0, 10)
+  return `${safeName || "hive"}-${date}`
 }
 
 export function exportHiveWords(className: string, words: HiveWord[]) {
-  const csv = buildHiveCsv(words)
-  const safeName = className.trim().replace(/[^a-z0-9]+/gi, "-").toLowerCase()
-  const date = new Date().toISOString().slice(0, 10)
-  downloadCsv(`${safeName || "hive"}-${date}.csv`, csv)
+  downloadCsv(`${hiveFileBase(className)}.csv`, buildHiveCsv(words))
+}
+
+/** jspdf/jspdf-autotable stay dynamically imported behind exportTablePdf
+ * itself (see pdf.ts) -- this function doesn't need to know that, it
+ * just hands over pre-shaped rows like exportClassReportPdf's caller
+ * does. */
+export async function exportHiveWordsPdf(className: string, words: HiveWord[]) {
+  const { exportTablePdf } = await import("./pdf")
+  await exportTablePdf({
+    title: className,
+    subtitle: `${words.length} word${words.length === 1 ? "" : "s"}`,
+    headers: HEADERS,
+    rows: buildHiveRows(words),
+    filename: `${hiveFileBase(className)}.pdf`,
+  })
 }
