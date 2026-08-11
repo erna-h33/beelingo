@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { CheckCircle2, Circle, Mic, Pencil, Trash2 } from "lucide-react"
+import { useMemo, useState } from "react"
+import { ArrowDown, ArrowUp, ArrowUpDown, CheckCircle2, Circle, Mic, Pencil, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
@@ -39,6 +39,46 @@ const SOURCE_LABEL: Record<HiveWord["source"], string> = {
   ocr: "OCR",
 }
 
+/** What the Source badge actually shows -- the contributing student's
+ * name when resolvable, otherwise the generic source label. Shared by
+ * the row's badge and the Source column's sort comparator so they never
+ * disagree on what "the source" of a word is. */
+function sourceLabelFor(word: HiveWord, studentNamesById: Record<string, string>): string {
+  const contributorName =
+    word.source === "student" && word.added_by_class_student_id
+      ? studentNamesById[word.added_by_class_student_id]
+      : undefined
+  return contributorName ?? SOURCE_LABEL[word.source]
+}
+
+type SortColumn = "word" | "topic" | "source" | "verified"
+type SortDirection = "asc" | "desc"
+
+function compareWords(
+  a: HiveWord,
+  b: HiveWord,
+  column: SortColumn,
+  studentNamesById: Record<string, string>,
+): number {
+  switch (column) {
+    case "word":
+      return a.word.localeCompare(b.word)
+    case "topic": {
+      // Words without a topic always sort to the bottom, regardless of
+      // direction -- flipping "no topic" to the top on descending would
+      // just be confusing to scan.
+      if (!a.topic && !b.topic) return 0
+      if (!a.topic) return 1
+      if (!b.topic) return -1
+      return a.topic.localeCompare(b.topic)
+    }
+    case "source":
+      return sourceLabelFor(a, studentNamesById).localeCompare(sourceLabelFor(b, studentNamesById))
+    case "verified":
+      return Number(a.verified) - Number(b.verified)
+  }
+}
+
 interface HiveWordsTableProps {
   classId: string
   words: HiveWord[]
@@ -49,25 +89,75 @@ interface HiveWordsTableProps {
 }
 
 export function HiveWordsTable({ classId, words, studentNamesById }: HiveWordsTableProps) {
+  const [sortColumn, setSortColumn] = useState<SortColumn>("word")
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc")
+
+  function handleSort(column: SortColumn) {
+    if (column === sortColumn) {
+      setSortDirection((d) => (d === "asc" ? "desc" : "asc"))
+    } else {
+      setSortColumn(column)
+      setSortDirection("asc")
+    }
+  }
+
+  const sortedWords = useMemo(() => {
+    const sign = sortDirection === "asc" ? 1 : -1
+    return [...words].sort((a, b) => sign * compareWords(a, b, sortColumn, studentNamesById))
+  }, [words, sortColumn, sortDirection, studentNamesById])
+
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Word</TableHead>
+          <SortableHead column="word" label="Word" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
           <TableHead>Translation</TableHead>
           <TableHead>Details</TableHead>
-          <TableHead>Topic</TableHead>
-          <TableHead>Source</TableHead>
-          <TableHead>Verified</TableHead>
+          <SortableHead column="topic" label="Topic" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+          <SortableHead column="source" label="Source" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+          <SortableHead column="verified" label="Verified" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
           <TableHead className="text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {words.map((word) => (
+        {sortedWords.map((word) => (
           <HiveWordRow key={word.id} classId={classId} word={word} studentNamesById={studentNamesById} />
         ))}
       </TableBody>
     </Table>
+  )
+}
+
+function SortableHead({
+  column,
+  label,
+  sortColumn,
+  sortDirection,
+  onSort,
+}: {
+  column: SortColumn
+  label: string
+  sortColumn: SortColumn
+  sortDirection: SortDirection
+  onSort: (column: SortColumn) => void
+}) {
+  const isActive = sortColumn === column
+  const Icon = isActive ? (sortDirection === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown
+  return (
+    <TableHead>
+      <button
+        type="button"
+        onClick={() => onSort(column)}
+        className={cn(
+          "flex items-center gap-1 text-sm font-medium",
+          isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+        )}
+        aria-label={`Sort by ${label}${isActive ? `, currently ${sortDirection === "asc" ? "ascending" : "descending"}` : ""}`}
+      >
+        {label}
+        <Icon className="size-3.5" />
+      </button>
+    </TableHead>
   )
 }
 
@@ -89,15 +179,7 @@ function HiveWordRow({
     .filter(Boolean)
     .join(" · ")
 
-  // Prefer the actual contributor's name over the generic source type --
-  // falls back to "Student" if they've since been removed from the
-  // roster (added_by_class_student_id set-nulls on delete) or the
-  // roster hasn't loaded yet.
-  const contributorName =
-    word.source === "student" && word.added_by_class_student_id
-      ? studentNamesById[word.added_by_class_student_id]
-      : undefined
-  const sourceLabel = contributorName ?? SOURCE_LABEL[word.source]
+  const sourceLabel = sourceLabelFor(word, studentNamesById)
 
   async function handleToggleVerified() {
     try {
