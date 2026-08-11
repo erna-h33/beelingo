@@ -20,7 +20,7 @@ export function StudentShell() {
   const { data: session } = useStudentSessionQuery()
 
   return (
-    <div className="flex min-h-dvh flex-col bg-background text-foreground">
+    <div className="flex h-dvh flex-col bg-background text-foreground">
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
         <div className="flex flex-col leading-tight">
           <span className="text-base font-semibold tracking-tight">Beelingo</span>
