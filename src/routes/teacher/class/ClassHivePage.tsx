@@ -1,10 +1,9 @@
 import { useMemo, useState } from "react"
 import { useParams } from "react-router-dom"
-import { Download, ImageUp, Plus, Search, Sparkles } from "lucide-react"
+import { Download, ImageUp, Plus, Sparkles } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Select,
@@ -16,6 +15,7 @@ import {
 import { useClassQuery } from "@/features/classes/useClasses"
 import { ExportHiveDialog } from "@/features/export/components/ExportHiveDialog"
 import { useCreateHiveWordMutation, useHiveWordsQuery } from "@/features/hive/useHiveWords"
+import { HiveSearchInput } from "@/features/hive/components/HiveSearchInput"
 import { HiveWordFormDialog } from "@/features/hive/components/HiveWordFormDialog"
 import { HiveWordsTable } from "@/features/hive/components/HiveWordsTable"
 import { OcrImportDialog } from "@/features/hive/components/OcrImportDialog"
@@ -142,15 +142,7 @@ export default function ClassHivePage() {
 
       {!isLoading && words && words.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          <div className="relative flex-1 min-w-48">
-            <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search words or translations"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8"
-            />
-          </div>
+          <HiveSearchInput value={search} onChange={setSearch} className="min-w-48 flex-1" />
           {topics.length > 0 && (
             <Select value={topic} onValueChange={setTopic}>
               <SelectTrigger className="w-40">

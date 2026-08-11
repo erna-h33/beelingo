@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react"
-import { Hexagon, Plus, Quote, Search, Sparkles, StickyNote } from "lucide-react"
+import { Hexagon, Plus, Quote, Sparkles, StickyNote } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -10,6 +9,7 @@ import { useStudentSessionQuery } from "@/features/studentSession/useStudentSess
 import { useHiveWordsQuery } from "@/features/hive/useHiveWords"
 import { useMyContributionsQuery } from "@/features/hive/useContributions"
 import { ContributeWordDialog } from "@/features/hive/components/ContributeWordDialog"
+import { HiveSearchInput } from "@/features/hive/components/HiveSearchInput"
 import { MyContributionRow } from "@/features/hive/components/MyContributionRow"
 import { AudioPlayButton } from "@/features/hive/audio/AudioPlayButton"
 
@@ -19,11 +19,15 @@ export default function HivePage() {
   const { data: contributions, isLoading: contributionsLoading } = useMyContributionsQuery(
     session?.classStudentId,
   )
-  const [search, setSearch] = useState("")
+  // Independent per tab -- searching the whole Hive and searching just
+  // your own contributions are different intents over different lists,
+  // so switching tabs doesn't carry one search into the other.
+  const [hiveSearch, setHiveSearch] = useState("")
+  const [mineSearch, setMineSearch] = useState("")
 
   const filteredWords = useMemo(() => {
     if (!words) return []
-    const query = search.trim().toLowerCase()
+    const query = hiveSearch.trim().toLowerCase()
     const matches = query
       ? words.filter(
           (w) =>
@@ -32,7 +36,16 @@ export default function HivePage() {
         )
       : words
     return [...matches].sort((a, b) => a.word.localeCompare(b.word))
-  }, [words, search])
+  }, [words, hiveSearch])
+
+  const filteredContributions = useMemo(() => {
+    if (!contributions) return []
+    const query = mineSearch.trim().toLowerCase()
+    if (!query) return contributions
+    return contributions.filter(
+      (c) => c.word.toLowerCase().includes(query) || (c.translation ?? "").toLowerCase().includes(query),
+    )
+  }, [contributions, mineSearch])
 
   if (!session) return null
 
@@ -67,15 +80,7 @@ export default function HivePage() {
 
         <TabsContent value="hive" className="flex flex-col gap-3 pt-3">
           {!wordsLoading && words && words.length > 0 && (
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search words or translations"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-8"
-              />
-            </div>
+            <HiveSearchInput value={hiveSearch} onChange={setHiveSearch} sticky />
           )}
 
           {wordsLoading && (
@@ -136,7 +141,11 @@ export default function HivePage() {
           )}
         </TabsContent>
 
-        <TabsContent value="mine" className="flex flex-col gap-2 pt-3">
+        <TabsContent value="mine" className="flex flex-col gap-3 pt-3">
+          {!contributionsLoading && contributions && contributions.length > 0 && (
+            <HiveSearchInput value={mineSearch} onChange={setMineSearch} sticky />
+          )}
+
           {contributionsLoading && (
             <div className="flex flex-col gap-2">
               {Array.from({ length: 3 }).map((_, i) => (
@@ -155,15 +164,21 @@ export default function HivePage() {
             </div>
           )}
 
-          {!contributionsLoading &&
-            contributions?.map((contribution) => (
-              <MyContributionRow
-                key={contribution.id}
-                contribution={contribution}
-                classStudentId={session.classStudentId}
-                classId={session.classId}
-              />
-            ))}
+          <div className="flex flex-col gap-2">
+            {!contributionsLoading &&
+              filteredContributions.map((contribution) => (
+                <MyContributionRow
+                  key={contribution.id}
+                  contribution={contribution}
+                  classStudentId={session.classStudentId}
+                  classId={session.classId}
+                />
+              ))}
+          </div>
+
+          {!contributionsLoading && contributions && contributions.length > 0 && filteredContributions.length === 0 && (
+            <p className="py-6 text-center text-sm text-muted-foreground">No contributions match your search.</p>
+          )}
         </TabsContent>
       </Tabs>
     </div>
