@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { Hexagon, Plus, Search, Sparkles } from "lucide-react"
+import { Hexagon, Plus, Quote, Search, Sparkles, StickyNote } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -114,6 +114,18 @@ export default function HivePage() {
                     {[word.word_type, word.gender, word.plural && `pl. ${word.plural}`]
                       .filter(Boolean)
                       .join(" · ")}
+                  </p>
+                )}
+                {word.practice_sentence && (
+                  <p className="mt-2 flex items-start gap-1.5 text-sm text-muted-foreground italic">
+                    <Quote className="mt-0.5 size-3.5 shrink-0" />
+                    {word.practice_sentence}
+                  </p>
+                )}
+                {word.teacher_notes && (
+                  <p className="mt-2 flex items-start gap-1.5 rounded-md bg-muted px-2 py-1.5 text-xs text-muted-foreground">
+                    <StickyNote className="mt-0.5 size-3.5 shrink-0" />
+                    {word.teacher_notes}
                   </p>
                 )}
               </div>
