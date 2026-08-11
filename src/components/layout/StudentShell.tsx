@@ -3,6 +3,8 @@ import { Gamepad2, Hexagon, Home } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { BeelingoLogo } from "@/components/BeelingoLogo"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useStudentSessionQuery } from "@/features/studentSession/useStudentSession"
 
 const NAV_ITEMS = [
@@ -18,19 +20,37 @@ const NAV_ITEMS = [
  */
 export function StudentShell() {
   const { data: session } = useStudentSessionQuery()
+  const initial = session?.displayName.charAt(0).toUpperCase() || "S"
 
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
-        <div className="flex flex-col leading-tight">
+      <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-4">
+        <div className="flex shrink-0 items-center gap-2">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
+            <BeelingoLogo className="size-5" />
+          </div>
           <span className="text-base font-semibold tracking-tight">Beelingo</span>
-          {session && (
-            <span className="text-xs text-muted-foreground">
-              {session.displayName} · {session.className}
-            </span>
-          )}
         </div>
-        <ThemeToggle />
+
+        <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+          {session && (
+            <div className="flex min-w-0 items-center gap-2 rounded-full border border-border py-1 pr-3 pl-1">
+              <Avatar size="sm" className="shrink-0">
+                <AvatarFallback className="bg-primary/15 font-semibold text-primary">
+                  {initial}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex min-w-0 flex-col leading-tight">
+                <span className="truncate text-xs font-medium">{session.displayName}</span>
+                <span className="truncate text-[11px] text-muted-foreground">
+                  {session.className}
+                  {session.learningLanguage.flagEmoji ? ` ${session.learningLanguage.flagEmoji}` : ""}
+                </span>
+              </div>
+            </div>
+          )}
+          <ThemeToggle />
+        </div>
       </header>
 
       <main className="flex-1 overflow-y-auto px-4 py-5 pb-24">
