@@ -141,7 +141,7 @@ export default function ClassHivePage() {
       </div>
 
       {!isLoading && words && words.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="sticky top-0 z-10 flex flex-wrap gap-2 bg-background py-2">
           <HiveSearchInput value={search} onChange={setSearch} className="min-w-48 flex-1" />
           {topics.length > 0 && (
             <Select value={topic} onValueChange={setTopic}>
