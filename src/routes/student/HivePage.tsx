@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { Hexagon, Plus, Quote, Sparkles, StickyNote } from "lucide-react"
+import { Download, Hexagon, Plus, Quote, Sparkles, StickyNote } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -9,6 +9,7 @@ import { useStudentSessionQuery } from "@/features/studentSession/useStudentSess
 import { useHiveWordsQuery } from "@/features/hive/useHiveWords"
 import { useMyContributionsQuery } from "@/features/hive/useContributions"
 import { ContributeWordDialog } from "@/features/hive/components/ContributeWordDialog"
+import { ExportHiveDialog } from "@/features/export/components/ExportHiveDialog"
 import { HiveSearchInput } from "@/features/hive/components/HiveSearchInput"
 import { MyContributionRow } from "@/features/hive/components/MyContributionRow"
 import { AudioPlayButton } from "@/features/hive/audio/AudioPlayButton"
@@ -80,7 +81,19 @@ export default function HivePage() {
 
         <TabsContent value="hive" className="flex flex-col gap-3 pt-3">
           {!wordsLoading && words && words.length > 0 && (
-            <HiveSearchInput value={hiveSearch} onChange={setHiveSearch} sticky />
+            <div className="sticky top-0 z-10 flex flex-wrap gap-2 bg-background py-2">
+              <HiveSearchInput value={hiveSearch} onChange={setHiveSearch} className="min-w-48 flex-1" />
+              <ExportHiveDialog
+                className={session.className}
+                words={words}
+                trigger={
+                  <Button size="sm" variant="outline">
+                    <Download className="size-4" />
+                    Export
+                  </Button>
+                }
+              />
+            </div>
           )}
 
           {wordsLoading && (
