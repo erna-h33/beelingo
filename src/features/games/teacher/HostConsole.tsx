@@ -19,6 +19,11 @@ import { useGameQuestionsQuery, type QuestionPayload } from "@/features/games/us
 import { type GameParticipant, useGameParticipantsQuery, useGameSessionQuery } from "@/features/games/useGameSession"
 import { useWaitingRoomPresence } from "@/features/games/useWaitingRoomPresence"
 
+// How long after every student finishes a self-paced game before it
+// auto-ends -- the End Game button also flashes for this entire window,
+// so a teacher glancing back at the screen can't miss it.
+const AUTO_END_MS = 10_000
+
 interface HostConsoleProps {
   classId: string
   sessionId: string
@@ -60,9 +65,10 @@ export function HostConsole({ classId, sessionId, onReset }: HostConsoleProps) {
     (participants ?? []).every((p) => p.correct_count + p.incorrect_count >= totalQuestions)
 
   // Tracks when the class first became "all finished," so the End Game
-  // button can flash for the first 15s and the game can auto-end at the
-  // 30s mark if the teacher hasn't ended it manually. Resets whenever
-  // the session leaves "active" (fresh game, or already ended).
+  // button can flash for the whole AUTO_END_MS window and the game can
+  // auto-end once it elapses if the teacher hasn't ended it manually.
+  // Resets whenever the session leaves "active" (fresh game, or already
+  // ended).
   const [allFinishedSince, setAllFinishedSince] = useState<number | null>(null)
   useEffect(() => {
     if (session?.status !== "active" || !allSelfPacedFinished) {
@@ -80,7 +86,7 @@ export function HostConsole({ classId, sessionId, onReset }: HostConsoleProps) {
 
   useEffect(() => {
     if (!allFinishedSince) return
-    const remaining = 30_000 - (Date.now() - allFinishedSince)
+    const remaining = AUTO_END_MS - (Date.now() - allFinishedSince)
     if (remaining <= 0) {
       void endSessionRef.current()
       return
@@ -99,9 +105,9 @@ export function HostConsole({ classId, sessionId, onReset }: HostConsoleProps) {
   }, [allFinishedSince])
 
   const elapsedSinceFinished = allFinishedSince ? nowTick - allFinishedSince : 0
-  const isEndGameFlashing = allFinishedSince !== null && elapsedSinceFinished < 15_000
+  const isEndGameFlashing = allFinishedSince !== null && elapsedSinceFinished < AUTO_END_MS
   const autoEndCountdown =
-    allFinishedSince !== null ? Math.max(0, Math.ceil((30_000 - elapsedSinceFinished) / 1000)) : null
+    allFinishedSince !== null ? Math.max(0, Math.ceil((AUTO_END_MS - elapsedSinceFinished) / 1000)) : null
 
   const currentQuestion = questions?.find((q) => q.sequence_index === session?.current_question_index)
   const isLast = (session?.current_question_index ?? 0) >= totalQuestions - 1
