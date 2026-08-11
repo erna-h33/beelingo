@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { supabase } from "@/lib/supabase/client"
 import type { ClassStudentStat, ClassWordStat } from "@/lib/supabase/types"
@@ -24,6 +24,23 @@ export function useClassStudentStatsQuery(classId: string | undefined) {
       return data as ClassStudentStat[]
     },
     enabled: Boolean(classId),
+  })
+}
+
+/** Teacher-only (enforced server-side). Moves the class's score cutoff
+ * to now() -- every student's totalScore goes back to 0, nothing else
+ * (games played, accuracy, Most Missed Words) is touched. See
+ * migrations/0034_reset_class_scoreboard.sql. */
+export function useResetScoreboardMutation(classId: string | undefined) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc("reset_class_scoreboard", { p_class_id: classId as string })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["classes", classId, "stats", "students"] })
+    },
   })
 }
 

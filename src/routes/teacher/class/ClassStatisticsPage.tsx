@@ -1,10 +1,21 @@
 import { useState } from "react"
 import { useParams } from "react-router-dom"
-import { Download, Gamepad2, Hexagon, Loader2, MessageSquarePlus, Users } from "lucide-react"
+import { Download, Gamepad2, Hexagon, Loader2, MessageSquarePlus, RotateCcw, Users } from "lucide-react"
 import { toast } from "sonner"
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useClassQuery } from "@/features/classes/useClasses"
 import { exportClassReportPdf } from "@/features/export/pdf"
@@ -16,6 +27,7 @@ import {
   useClassOverviewStatsQuery,
   useClassStudentStatsQuery,
   useClassWordStatsQuery,
+  useResetScoreboardMutation,
 } from "@/features/statistics/useClassStats"
 
 export default function ClassStatisticsPage() {
@@ -24,7 +36,19 @@ export default function ClassStatisticsPage() {
   const { data: overview, isLoading: overviewLoading } = useClassOverviewStatsQuery(classId)
   const { data: wordStats, isLoading: wordStatsLoading } = useClassWordStatsQuery(classId)
   const { data: studentStats, isLoading: studentStatsLoading } = useClassStudentStatsQuery(classId)
+  const resetScoreboard = useResetScoreboardMutation(classId)
   const [exporting, setExporting] = useState(false)
+
+  async function handleResetScoreboard() {
+    try {
+      await resetScoreboard.mutateAsync()
+      toast.success("Scoreboard reset", { description: "Every student's score is back to 0." })
+    } catch (error) {
+      toast.error("Couldn't reset the scoreboard", {
+        description: error instanceof Error ? error.message : undefined,
+      })
+    }
+  }
 
   const statsReady = !overviewLoading && !wordStatsLoading && !studentStatsLoading && Boolean(classItem && overview)
 
@@ -85,6 +109,29 @@ export default function ClassStatisticsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Scoreboard</CardTitle>
+            <CardAction>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm" disabled={!studentStats || studentStats.length === 0}>
+                    <RotateCcw className="size-4" />
+                    Reset
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Reset the scoreboard?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Every student's score goes back to 0. Games played, accuracy, and Most Missed Words are
+                      unaffected -- nothing else is deleted, and past games stay in the class's history.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleResetScoreboard}>Reset scoreboard</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </CardAction>
           </CardHeader>
           <CardContent>
             {studentStatsLoading ? <Skeleton className="h-40" /> : <Scoreboard students={studentStats ?? []} />}

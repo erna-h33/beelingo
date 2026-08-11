@@ -218,6 +218,11 @@ export interface Database {
           display_language_id: string
           created_at: string
           archived_at: string | null
+          // Score-only reset point for class_student_stats' totalScore
+          // (0034) -- games that started after this count toward the
+          // Scoreboard; every other stat still reads the full history.
+          // Never null after the first reset; null means "never reset."
+          scoreboard_reset_at: string | null
         }
         Insert: {
           id?: string
@@ -500,6 +505,10 @@ export interface Database {
       class_student_stats: {
         Args: { p_class_id: string }
         Returns: ClassStudentStat[]
+      }
+      reset_class_scoreboard: {
+        Args: { p_class_id: string }
+        Returns: void
       }
       teacher_dashboard_stats: {
         Args: Record<PropertyKey, never>
