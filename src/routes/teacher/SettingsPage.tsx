@@ -68,7 +68,7 @@ function ProfileCard({ email, displayName }: { email: string; displayName: strin
 
   return (
     <Card>
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
         <CardHeader>
           <CardTitle className="text-base">Profile</CardTitle>
           <CardDescription>Your name and login email.</CardDescription>
@@ -136,7 +136,7 @@ function PasswordCard() {
 
   return (
     <Card>
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
         <CardHeader>
           <CardTitle className="text-base">Password</CardTitle>
           <CardDescription>Change the password you log in with.</CardDescription>
