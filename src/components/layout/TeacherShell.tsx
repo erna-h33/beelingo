@@ -99,7 +99,9 @@ export function TeacherShell() {
                     <DropdownMenuSeparator />
                   </>
                 )}
-                <DropdownMenuItem disabled>Account settings</DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/t/settings">Account settings</Link>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem variant="destructive" onSelect={handleSignOut}>
                   Sign out

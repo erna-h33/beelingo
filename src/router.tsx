@@ -17,6 +17,7 @@ const NotFoundPage = lazy(() => import("@/routes/NotFoundPage"))
 const TeacherLoginPage = lazy(() => import("@/routes/teacher/LoginPage"))
 const TeacherDashboardPage = lazy(() => import("@/routes/teacher/DashboardPage"))
 const TeacherClassesPage = lazy(() => import("@/routes/teacher/ClassesPage"))
+const TeacherSettingsPage = lazy(() => import("@/routes/teacher/SettingsPage"))
 
 const ClassHivePage = lazy(() => import("@/routes/teacher/class/ClassHivePage"))
 const ClassStudentsPage = lazy(() => import("@/routes/teacher/class/ClassStudentsPage"))
@@ -44,6 +45,7 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: withSuspense(<TeacherDashboardPage />) },
           { path: "classes", element: withSuspense(<TeacherClassesPage />) },
+          { path: "settings", element: withSuspense(<TeacherSettingsPage />) },
           {
             path: "classes/:classId",
             element: <ClassWorkspaceLayout />,
