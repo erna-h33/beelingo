@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useClassQuery } from "@/features/classes/useClasses"
+import { useStudentsQuery } from "@/features/classes/students/useStudents"
 import { ExportHiveDialog } from "@/features/export/components/ExportHiveDialog"
 import { useCreateHiveWordMutation, useHiveWordsQuery } from "@/features/hive/useHiveWords"
 import { HiveSearchInput } from "@/features/hive/components/HiveSearchInput"
@@ -26,7 +27,15 @@ export default function ClassHivePage() {
   const { classId } = useParams<{ classId: string }>()
   const { data: classItem } = useClassQuery(classId)
   const { data: words, isLoading } = useHiveWordsQuery(classId)
+  const { data: students } = useStudentsQuery(classId)
   const createWord = useCreateHiveWordMutation(classId ?? "")
+
+  // Who actually contributed each word -- added_by_class_student_id has
+  // always been stored on hive_words, just never looked up/shown before.
+  const studentNamesById = useMemo(
+    () => Object.fromEntries((students ?? []).map((s) => [s.id, s.display_name])),
+    [students],
+  )
 
   const [search, setSearch] = useState("")
   const [topic, setTopic] = useState(ALL_TOPICS)
@@ -186,7 +195,7 @@ export default function ClassHivePage() {
       )}
 
       {!isLoading && filteredWords.length > 0 && (
-        <HiveWordsTable classId={classId} words={filteredWords} />
+        <HiveWordsTable classId={classId} words={filteredWords} studentNamesById={studentNamesById} />
       )}
 
       {!isLoading && words && words.length > 0 && filteredWords.length === 0 && (

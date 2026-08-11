@@ -39,7 +39,16 @@ const SOURCE_LABEL: Record<HiveWord["source"], string> = {
   ocr: "OCR",
 }
 
-export function HiveWordsTable({ classId, words }: { classId: string; words: HiveWord[] }) {
+interface HiveWordsTableProps {
+  classId: string
+  words: HiveWord[]
+  /** Roster display names keyed by class_student_id, for resolving
+   * hive_words.added_by_class_student_id -- "who actually contributed
+   * this word," not just its generic source type. */
+  studentNamesById: Record<string, string>
+}
+
+export function HiveWordsTable({ classId, words, studentNamesById }: HiveWordsTableProps) {
   return (
     <Table>
       <TableHeader>
@@ -55,14 +64,22 @@ export function HiveWordsTable({ classId, words }: { classId: string; words: Hiv
       </TableHeader>
       <TableBody>
         {words.map((word) => (
-          <HiveWordRow key={word.id} classId={classId} word={word} />
+          <HiveWordRow key={word.id} classId={classId} word={word} studentNamesById={studentNamesById} />
         ))}
       </TableBody>
     </Table>
   )
 }
 
-function HiveWordRow({ classId, word }: { classId: string; word: HiveWord }) {
+function HiveWordRow({
+  classId,
+  word,
+  studentNamesById,
+}: {
+  classId: string
+  word: HiveWord
+  studentNamesById: Record<string, string>
+}) {
   const [editOpen, setEditOpen] = useState(false)
   const updateWord = useUpdateHiveWordMutation(classId)
   const setVerified = useSetVerifiedMutation(classId)
@@ -71,6 +88,16 @@ function HiveWordRow({ classId, word }: { classId: string; word: HiveWord }) {
   const details = [word.word_type, word.gender, word.plural && `pl. ${word.plural}`]
     .filter(Boolean)
     .join(" · ")
+
+  // Prefer the actual contributor's name over the generic source type --
+  // falls back to "Student" if they've since been removed from the
+  // roster (added_by_class_student_id set-nulls on delete) or the
+  // roster hasn't loaded yet.
+  const contributorName =
+    word.source === "student" && word.added_by_class_student_id
+      ? studentNamesById[word.added_by_class_student_id]
+      : undefined
+  const sourceLabel = contributorName ?? SOURCE_LABEL[word.source]
 
   async function handleToggleVerified() {
     try {
@@ -100,7 +127,7 @@ function HiveWordRow({ classId, word }: { classId: string; word: HiveWord }) {
       <TableCell className="text-sm text-muted-foreground">{details || "—"}</TableCell>
       <TableCell>{word.topic ? <Badge variant="outline">{word.topic}</Badge> : "—"}</TableCell>
       <TableCell>
-        <Badge variant="secondary">{SOURCE_LABEL[word.source]}</Badge>
+        <Badge variant="secondary">{sourceLabel}</Badge>
       </TableCell>
       <TableCell>
         <button
