@@ -22,26 +22,32 @@ function startOfWeek() {
   return d
 }
 
+/** Always alphabetical -- exported lists are for reading/printing/study,
+ * not "what got added most recently" (the Hive query's own default
+ * order), regardless of which filter or format is picked. */
 export function filterHiveWordsForExport(
   words: HiveWord[],
   filter: HiveExportFilter,
   topic?: string,
 ): HiveWord[] {
-  switch (filter) {
-    case "today": {
-      const since = startOfToday()
-      return words.filter((w) => new Date(w.created_at) >= since)
+  const filtered = (() => {
+    switch (filter) {
+      case "today": {
+        const since = startOfToday()
+        return words.filter((w) => new Date(w.created_at) >= since)
+      }
+      case "this_week": {
+        const since = startOfWeek()
+        return words.filter((w) => new Date(w.created_at) >= since)
+      }
+      case "by_topic":
+        return words.filter((w) => w.topic === topic)
+      case "entire_hive":
+      default:
+        return words
     }
-    case "this_week": {
-      const since = startOfWeek()
-      return words.filter((w) => new Date(w.created_at) >= since)
-    }
-    case "by_topic":
-      return words.filter((w) => w.topic === topic)
-    case "entire_hive":
-    default:
-      return words
-  }
+  })()
+  return [...filtered].sort((a, b) => a.word.localeCompare(b.word))
 }
 
 const HEADERS = [
@@ -78,6 +84,22 @@ export function buildHiveCsv(words: HiveWord[]): string {
   return toCsv(HEADERS, buildHiveRows(words))
 }
 
+// The PDF is meant to be printed or shared as a study sheet, not a full
+// data dump like the CSV -- Topic/Source/Verified/Date Added are
+// bookkeeping a teacher or student reading it on paper doesn't need.
+const PDF_HEADERS = ["Word", "Translation", "Word Type", "Gender", "Plural", "Practice Sentence"]
+
+function buildHivePdfRows(words: HiveWord[]): string[][] {
+  return words.map((w) => [
+    w.word,
+    w.translation ?? "",
+    w.word_type ?? "",
+    w.gender ?? "",
+    w.plural ?? "",
+    w.practice_sentence ?? "",
+  ])
+}
+
 function hiveFileBase(className: string): string {
   const safeName = className.trim().replace(/[^a-z0-9]+/gi, "-").toLowerCase()
   const date = new Date().toISOString().slice(0, 10)
@@ -97,8 +119,8 @@ export async function exportHiveWordsPdf(className: string, words: HiveWord[]) {
   await exportTablePdf({
     title: className,
     subtitle: `${words.length} word${words.length === 1 ? "" : "s"}`,
-    headers: HEADERS,
-    rows: buildHiveRows(words),
+    headers: PDF_HEADERS,
+    rows: buildHivePdfRows(words),
     filename: `${hiveFileBase(className)}.pdf`,
   })
 }
