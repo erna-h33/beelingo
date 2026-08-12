@@ -8,9 +8,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useStudentSessionQuery } from "@/features/studentSession/useStudentSession"
 import { useHiveWordsQuery } from "@/features/hive/useHiveWords"
 import { useMyContributionsQuery } from "@/features/hive/useContributions"
+import { useLearnedWordsQuery } from "@/features/hive/useLearnedWords"
 import { ContributeWordDialog } from "@/features/hive/components/ContributeWordDialog"
 import { ExportHiveDialog } from "@/features/export/components/ExportHiveDialog"
 import { HiveSearchInput } from "@/features/hive/components/HiveSearchInput"
+import { LearnedCheckbox } from "@/features/hive/components/LearnedCheckbox"
 import { MyContributionRow } from "@/features/hive/components/MyContributionRow"
 import { AudioPlayButton } from "@/features/hive/audio/AudioPlayButton"
 
@@ -20,6 +22,7 @@ export default function HivePage() {
   const { data: contributions, isLoading: contributionsLoading } = useMyContributionsQuery(
     session?.classStudentId,
   )
+  const { data: learnedWords } = useLearnedWordsQuery(session?.classStudentId)
   // Independent per tab -- searching the whole Hive and searching just
   // your own contributions are different intents over different lists,
   // so switching tabs doesn't carry one search into the other.
@@ -81,18 +84,25 @@ export default function HivePage() {
 
         <TabsContent value="hive" className="flex flex-col gap-3 pt-3">
           {!wordsLoading && words && words.length > 0 && (
-            <div className="sticky top-0 z-10 flex flex-wrap gap-2 bg-background py-2">
-              <HiveSearchInput value={hiveSearch} onChange={setHiveSearch} className="min-w-48 flex-1" />
-              <ExportHiveDialog
-                className={session.className}
-                words={words}
-                trigger={
-                  <Button size="sm" variant="outline">
-                    <Download className="size-4" />
-                    Export
-                  </Button>
-                }
-              />
+            <div className="sticky top-0 z-10 flex flex-col gap-2 bg-background py-2">
+              <div className="flex flex-wrap gap-2">
+                <HiveSearchInput value={hiveSearch} onChange={setHiveSearch} className="min-w-48 flex-1" />
+                <ExportHiveDialog
+                  className={session.className}
+                  words={words}
+                  trigger={
+                    <Button size="sm" variant="outline">
+                      <Download className="size-4" />
+                      Export
+                    </Button>
+                  }
+                />
+              </div>
+              {learnedWords && (
+                <p className="text-xs text-muted-foreground">
+                  {learnedWords.size} of {words.length} learned
+                </p>
+              )}
             </div>
           )}
 
@@ -114,38 +124,45 @@ export default function HivePage() {
 
           {!wordsLoading &&
             filteredWords.map((word) => (
-              <div key={word.id} className="rounded-lg border border-border p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="font-medium">{word.word}</p>
-                    {word.translation && (
-                      <p className="text-sm text-muted-foreground">{word.translation}</p>
-                    )}
+              <div key={word.id} className="flex items-start gap-3 rounded-lg border border-border p-3">
+                <LearnedCheckbox
+                  classStudentId={session.classStudentId}
+                  hiveWordId={word.id}
+                  learned={learnedWords?.has(word.id) ?? false}
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-medium">{word.word}</p>
+                      {word.translation && (
+                        <p className="text-sm text-muted-foreground">{word.translation}</p>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <AudioPlayButton path={word.teacher_audio_path} />
+                      {word.topic && <Badge variant="outline">{word.topic}</Badge>}
+                    </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <AudioPlayButton path={word.teacher_audio_path} />
-                    {word.topic && <Badge variant="outline">{word.topic}</Badge>}
-                  </div>
+                  {(word.word_type || word.gender || word.plural) && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {[word.word_type, word.gender, word.plural && `pl. ${word.plural}`]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                  )}
+                  {word.practice_sentence && (
+                    <p className="mt-2 flex items-start gap-1.5 text-sm text-muted-foreground italic">
+                      <Quote className="mt-0.5 size-3.5 shrink-0" />
+                      {word.practice_sentence}
+                    </p>
+                  )}
+                  {word.teacher_notes && (
+                    <p className="mt-2 flex items-start gap-1.5 rounded-md bg-muted px-2 py-1.5 text-xs text-muted-foreground">
+                      <StickyNote className="mt-0.5 size-3.5 shrink-0" />
+                      {word.teacher_notes}
+                    </p>
+                  )}
                 </div>
-                {(word.word_type || word.gender || word.plural) && (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {[word.word_type, word.gender, word.plural && `pl. ${word.plural}`]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </p>
-                )}
-                {word.practice_sentence && (
-                  <p className="mt-2 flex items-start gap-1.5 text-sm text-muted-foreground italic">
-                    <Quote className="mt-0.5 size-3.5 shrink-0" />
-                    {word.practice_sentence}
-                  </p>
-                )}
-                {word.teacher_notes && (
-                  <p className="mt-2 flex items-start gap-1.5 rounded-md bg-muted px-2 py-1.5 text-xs text-muted-foreground">
-                    <StickyNote className="mt-0.5 size-3.5 shrink-0" />
-                    {word.teacher_notes}
-                  </p>
-                )}
               </div>
             ))}
 

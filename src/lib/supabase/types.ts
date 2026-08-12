@@ -357,6 +357,23 @@ export interface Database {
         Update: never
         Relationships: []
       }
+      student_learned_words: {
+        Row: {
+          id: string
+          class_student_id: string
+          hive_word_id: string
+          learned_at: string
+        }
+        Insert: {
+          id?: string
+          class_student_id: string
+          hive_word_id: string
+        }
+        // No update path -- toggling "learned" off is a delete, not a
+        // flip of some boolean column (see migration 0035).
+        Update: never
+        Relationships: []
+      }
       game_sessions: {
         Row: {
           id: string
